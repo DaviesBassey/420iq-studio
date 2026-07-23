@@ -11,17 +11,17 @@ Packaged as an installable, offline-first **Progressive Web App (PWA)**.
 
 | File | Role |
 | --- | --- |
-| `index.html` | App shell and surfaces (host / stage / player / pack / audit) |
-| `styles.css` | Premium-mobile theme |
-| `engine.js` | Pure game engine — state machine, scoring, pack balancing, timer (no DOM) |
-| `app.js` | UI glue — rendering, controls, WebAudio SFX, access routing, persistence |
-| `manifest.webmanifest` | PWA manifest (name, icons, theme, standalone display) |
-| `service-worker.js` | Precache-and-serve shell for offline launch + clean updates |
-| `icons/` | App icons (192/512 any + maskable, Apple touch icon) |
-| `data/` | Version-controlled question packs (`questions.default.json` is the tracked default) |
-| `package.json` | Handoff scripts for local serving, tests and syntax checks |
-| `tests/` | `node --test` suites (engine, static UI, PWA, package) |
-| `RECORDING.md` | Dry-run recording checklist (two-monitor + OBS + full run-through) |
+| [`index.html`](index.html) | App shell and surfaces (host / stage / player / pack / audit) |
+| [`styles.css`](styles.css) | Premium-mobile theme |
+| [`engine.js`](engine.js) | Pure game engine — state machine, scoring, pack balancing, timer (no DOM) |
+| [`app.js`](app.js) | UI glue — rendering, controls, WebAudio SFX, access routing, persistence |
+| [`manifest.webmanifest`](manifest.webmanifest) | PWA manifest (name, icons, theme, standalone display) |
+| [`service-worker.js`](service-worker.js) | Precache-and-serve shell for offline launch + clean updates |
+| [`icons/`](icons/) | App icons (192/512 any + maskable, Apple touch icon) |
+| [`data/`](data/) | Version-controlled question packs ([`questions.default.json`](data/questions.default.json) is the tracked default) |
+| [`package.json`](package.json) | Handoff scripts for local serving, tests and syntax checks |
+| [`tests/`](tests/) | `node --test` suites (engine, static UI, PWA, package) |
+| [`RECORDING.md`](RECORDING.md) | Dry-run recording checklist (two-monitor + OBS + full run-through) |
 
 ## Access URLs
 
@@ -121,7 +121,7 @@ Cannabis is a regulated topic, so the app carries a light compliance layer
 
 ## Question packs are your IP — keep them in version control
 
-The default pack lives at `data/questions.default.json` (tracked), and the demo
+The default pack lives at [`data/questions.default.json`](data/questions.default.json) (tracked), and the demo
 seed is also embedded in `app.js` for offline first-run. Your real, edited packs
 should not live only in a browser:
 
