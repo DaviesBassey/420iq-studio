@@ -1,0 +1,343 @@
+{
+  "type": "420iq-pack",
+  "version": "420iq-static-pilot-v2",
+  "questions": [
+    {
+      "id": "demo-science-thc",
+      "domain": "Science & Plant Literacy",
+      "difficulty": "Spark",
+      "stem": "What does THC stand for?",
+      "choices": [
+        "Tetrahydrocannabinol",
+        "Terpene hybrid compound",
+        "Total hemp content",
+        "Traditional herbal code"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "THC is one cannabinoid among many studied in cannabis research. 420IQ treats this as knowledge, not a product recommendation.",
+      "sourceSignals": [
+        "A cannabinoid name usually ends with -ol.",
+        "A marketing term can replace a chemical name.",
+        "A growing method defines the molecule."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: chemical name record must be verified before broadcast.",
+      "correctAsOf": "Demo only",
+      "readTime": 8,
+      "sensitivity": "Tier 1"
+    },
+    {
+      "id": "demo-history-hemp-fiber",
+      "domain": "History & Global Roots",
+      "difficulty": "Flame",
+      "stem": "Which material use is historically associated with hemp fiber?",
+      "choices": [
+        "Rope and textiles",
+        "Porcelain glazing",
+        "Optical glass",
+        "Battery acid"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "Hemp fiber has been used in cordage and textiles. Production questions still need territory-specific sourcing.",
+      "sourceSignals": [
+        "Cordage is a fiber use.",
+        "Glass is spun from plant bast.",
+        "Porcelain is made from stems."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: material-history source required.",
+      "correctAsOf": "Demo only",
+      "readTime": 9,
+      "sensitivity": "Tier 1"
+    },
+    {
+      "id": "demo-law-1961",
+      "domain": "Law & Policy",
+      "difficulty": "Inferno",
+      "stem": "Which 1961 international treaty is central to the modern global drug-control framework?",
+      "choices": [
+        "Single Convention on Narcotic Drugs",
+        "Kyoto Protocol",
+        "Geneva Conventions",
+        "Paris Agreement"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "Legal questions need dates, jurisdictions and careful wording. This demo question asks about treaty title, not current local law.",
+      "sourceSignals": [
+        "The title names narcotic drugs directly.",
+        "Climate agreements set drug schedules.",
+        "Humanitarian law defines cannabis policy."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: UN treaty record required before broadcast.",
+      "correctAsOf": "Demo only",
+      "readTime": 13,
+      "sensitivity": "Tier 2"
+    },
+    {
+      "id": "demo-culture-evidence",
+      "domain": "Culture & Media",
+      "difficulty": "Inferno",
+      "stem": "In 420IQ, what should the host challenge when a contestant gives a confident but unsupported claim?",
+      "choices": [
+        "The evidence behind the claim",
+        "The contestant's personality",
+        "The strongest accent in the room",
+        "The speed of the applause"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "The format gets tension from evidence literacy and overconfidence, not from humiliating contestants.",
+      "sourceSignals": [
+        "The show tests what a claim can defend.",
+        "Volume makes a claim verified.",
+        "A confident tone replaces review."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: editorial standard from 420IQ bible.",
+      "correctAsOf": "Demo only",
+      "readTime": 11,
+      "sensitivity": "Tier 2"
+    },
+    {
+      "id": "demo-safety-claims",
+      "domain": "Public Health & Safety",
+      "difficulty": "Flame",
+      "stem": "Which wording approach is safest for health-related Knowledge Drops?",
+      "choices": [
+        "Cautious, sourced and clearly qualified",
+        "Universal claims without a date",
+        "Dosage advice from the host",
+        "Anecdotes presented as proof"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "Sensitive topics require cautious language, qualified review and a clear correct-as-of date.",
+      "sourceSignals": [
+        "Evidence quality and date labels matter.",
+        "Anecdotes are enough for medical certainty.",
+        "A host can prescribe if the answer sounds simple."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: Tier 3 review workflow required for production.",
+      "correctAsOf": "Demo only",
+      "readTime": 12,
+      "sensitivity": "Tier 3"
+    },
+    {
+      "id": "demo-business-prizes",
+      "domain": "Business & Ethics",
+      "difficulty": "Wild 420",
+      "stem": "What should a sponsor-neutral 420IQ reward avoid?",
+      "choices": [
+        "Cannabis-product redemption",
+        "Knowledge status",
+        "A trophy moment",
+        "A verified learning experience"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "420IQ rewards knowledge, recognition and qualification. It does not reward buying, consuming or promoting cannabis products.",
+      "sourceSignals": [
+        "Knowledge rewards avoid product promotion.",
+        "Any sponsor item is automatically suitable.",
+        "Consumption is required to prove expertise."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: format bible reward rules.",
+      "correctAsOf": "Demo only",
+      "readTime": 10,
+      "sensitivity": "Tier 2"
+    },
+    {
+      "id": "demo-sports-anti-doping",
+      "domain": "Sports & Performance",
+      "difficulty": "Flame",
+      "stem": "In sports coverage, what should 420IQ check before discussing cannabis and athlete eligibility?",
+      "choices": [
+        "The current rule for the league or event",
+        "The loudest fan opinion",
+        "The player's jersey number",
+        "The age of the stadium"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "Sports rules can vary by league, country and event. 420IQ frames eligibility questions around current governing-body policy, not assumptions.",
+      "sourceSignals": [
+        "Rules depend on the governing body and date.",
+        "Fan opinion defines athlete eligibility.",
+        "Venue history sets anti-doping policy."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: verify against the current league, federation or anti-doping authority rulebook.",
+      "correctAsOf": "Demo only",
+      "readTime": 12,
+      "sensitivity": "Tier 2"
+    },
+    {
+      "id": "demo-sports-recovery-claims",
+      "domain": "Sports & Performance",
+      "difficulty": "Inferno",
+      "stem": "Which phrase keeps a sports-recovery Knowledge Drop responsible?",
+      "choices": [
+        "Some athletes report use, but evidence and rules vary",
+        "Cannabis guarantees faster recovery",
+        "Every league treats cannabinoids the same",
+        "Anecdotes replace medical review"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "Performance and recovery claims need careful qualifiers. Player stories are not the same as clinical proof or league clearance.",
+      "sourceSignals": [
+        "Claims should separate reports, evidence and eligibility.",
+        "A single athlete story proves universal recovery.",
+        "Rules are identical across all sports."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: verify with current sports policy and health evidence before broadcast.",
+      "correctAsOf": "Demo only",
+      "readTime": 13,
+      "sensitivity": "Tier 3"
+    },
+    {
+      "id": "demo-music-hiphop-cultural-reference",
+      "domain": "Music & Pop Culture",
+      "difficulty": "Spark",
+      "stem": "In music history questions, what should 420IQ test without turning culture into a stereotype?",
+      "choices": [
+        "The context of a lyric, era or scene",
+        "A caricature of the artist",
+        "A rumor from comment sections",
+        "A joke about the audience"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "Pop-culture questions work best when they test context, influence and media literacy instead of reducing artists or fans to cliches.",
+      "sourceSignals": [
+        "Context and source attribution protect the question.",
+        "Stereotypes make cultural facts stronger.",
+        "Rumors are enough if they trend."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: verify music references through reliable interviews, releases or archives.",
+      "correctAsOf": "Demo only",
+      "readTime": 10,
+      "sensitivity": "Tier 2"
+    },
+    {
+      "id": "demo-music-film-rating",
+      "domain": "Music & Pop Culture",
+      "difficulty": "Flame",
+      "stem": "Why should a film or music cannabis reference include its release context?",
+      "choices": [
+        "Audience standards and laws change over time",
+        "Old scenes are automatically current law",
+        "The title proves the fact",
+        "All references are endorsements"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "Release year, location and genre context help viewers separate a cultural reference from current legal or health advice.",
+      "sourceSignals": [
+        "Context prevents outdated or overbroad claims.",
+        "A movie scene is current policy.",
+        "A song title is a legal source."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: cite the release record and avoid treating fiction as advice.",
+      "correctAsOf": "Demo only",
+      "readTime": 11,
+      "sensitivity": "Tier 2"
+    },
+    {
+      "id": "demo-law-age-gates",
+      "domain": "Law & Policy",
+      "difficulty": "Flame",
+      "stem": "What should a host say before comparing cannabis age rules across places?",
+      "choices": [
+        "Jurisdiction and date matter",
+        "Every country uses the same age",
+        "Online comments settle the rule",
+        "The rule never changes"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "Age and access rules are jurisdiction-specific and can change. 420IQ should never flatten them into one universal rule.",
+      "sourceSignals": [
+        "Territory and date define the claim boundary.",
+        "All countries use the same standard.",
+        "A viral post is a legal update."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: verify with current government or regulator sources by territory.",
+      "correctAsOf": "Demo only",
+      "readTime": 11,
+      "sensitivity": "Tier 3"
+    },
+    {
+      "id": "demo-science-endocannabinoid",
+      "domain": "Science & Plant Literacy",
+      "difficulty": "Inferno",
+      "stem": "What does the endocannabinoid system help regulate in the body?",
+      "choices": [
+        "Several signaling processes",
+        "Only hair color",
+        "Internet speed",
+        "Stadium lighting"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "The endocannabinoid system is a biological signaling system. Simple explanations still need careful, non-medical wording.",
+      "sourceSignals": [
+        "It is described as a signaling system.",
+        "It controls only cosmetic traits.",
+        "It is a sports broadcast system."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: verify through science education or biomedical reference sources.",
+      "correctAsOf": "Demo only",
+      "readTime": 12,
+      "sensitivity": "Tier 2"
+    },
+    {
+      "id": "demo-business-lab-labels",
+      "domain": "Business & Ethics",
+      "difficulty": "Spark",
+      "stem": "What should a consumer-facing cannabis product label help someone check?",
+      "choices": [
+        "Tested contents and clear warnings",
+        "A celebrity rumor",
+        "A hidden prize code",
+        "A guaranteed effect"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "Labels and testing claims should help people verify what is being represented, while avoiding promises about effects.",
+      "sourceSignals": [
+        "Labels should communicate contents and warnings.",
+        "Rumors are stronger than testing.",
+        "Effects can be guaranteed for everyone."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: verify label requirements by jurisdiction before broadcast.",
+      "correctAsOf": "Demo only",
+      "readTime": 10,
+      "sensitivity": "Tier 2"
+    },
+    {
+      "id": "demo-final-source-date",
+      "domain": "Future & Innovation",
+      "difficulty": "Final",
+      "final": true,
+      "stem": "The 420 Decision: Why should a Knowledge Drop include a source cue and correct-as-of date?",
+      "choices": [
+        "So viewers know the fact can be checked and may change",
+        "So the host can skip the explanation",
+        "So all legal rules sound universal",
+        "So questions can be reused forever"
+      ],
+      "correctIndex": 0,
+      "knowledgeDrop": "A strong Knowledge Drop leaves the viewer with something defensible: the claim, the limit and where the fact should be checked.",
+      "sourceSignals": [
+        "Dates and sources define the boundary of a claim.",
+        "A fact stays current because it appeared on screen.",
+        "Legal and health claims never need territory labels."
+      ],
+      "verifiedSignalIndex": 0,
+      "sourceCue": "Demo source cue: production needs actual source metadata.",
+      "correctAsOf": "Demo only",
+      "readTime": 15,
+      "sensitivity": "Tier 2"
+    }
+  ]
+}

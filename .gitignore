@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Editors
+.vscode/
+.idea/
+
+# OS / misc
+Thumbs.db
+
+# Local backups/exports downloaded from the app (keep packs under data/ instead)
+420iq-backup-*.json
+420iq-audit-*.json
+420iq-pack-*.json

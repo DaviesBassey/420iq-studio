@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101014">
+  <meta name="color-scheme" content="dark">
+  <title>420IQ Studio Pilot</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23101014'/%3E%3Ccircle cx='32' cy='32' r='23' fill='none' stroke='%23ffcb57' stroke-width='5'/%3E%3Ctext x='32' y='37' text-anchor='middle' font-family='Arial' font-size='15' font-weight='700' fill='%23f8f4e8'%3E420%3C/text%3E%3C/svg%3E">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="420IQ">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="./styles.css?v=420iq19">
+</head>
+<body data-theme="premium-mobile" data-access="admin">
+  <script>
+    (function bootstrapPlayerAccess() {
+      const params = new URLSearchParams(window.location.search);
+      const requestedMode = String(params.get("access") || params.get("role") || "admin").toLowerCase();
+
+      if (requestedMode === "player") {
+        document.body.dataset.access = "player";
+        const playerUrl = `${window.location.pathname}${window.location.search}#player`;
+        if (window.location.hash !== "#player") {
+          window.history.replaceState(null, "", playerUrl);
+        }
+        return;
+      }
+
+      if (requestedMode === "stage") {
+        document.body.dataset.access = "stage";
+        const stageUrl = `${window.location.pathname}${window.location.search}#stage`;
+        if (window.location.hash !== "#stage") {
+          window.history.replaceState(null, "", stageUrl);
+        }
+      }
+    })();
+  </script>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand-lockup" href="#host" aria-label="420IQ home">
+        <span class="mini-ring" aria-hidden="true"></span>
+        <span>
+          <strong>420IQ</strong>
+          <small>How High Is Your Knowledge?</small>
+        </span>
+      </a>
+
+      <nav class="surface-tabs" aria-label="420IQ surfaces">
+        <button class="tab-button active" type="button" data-tab="host">Host</button>
+        <button class="tab-button" type="button" data-tab="stage">Stage</button>
+        <button class="tab-button" type="button" data-tab="player">Player</button>
+        <button class="tab-button" type="button" data-tab="pack">Pack</button>
+        <button class="tab-button" type="button" data-tab="audit">Audit</button>
+      </nav>
+
+      <div class="topbar-actions">
+        <button class="icon-action active" type="button" id="soundToggle" title="SFX on" aria-label="Toggle sound effects" aria-pressed="true">SFX</button>
+        <button class="icon-action" type="button" id="undoButton" title="Undo last step" aria-label="Undo last step">UN</button>
+        <button class="icon-action" type="button" id="backupButton" title="Download recovery backup" aria-label="Download recovery backup">BK</button>
+        <button class="icon-action" type="button" id="exportButton" title="Export audit" aria-label="Export audit">EX</button>
+        <button class="icon-action" type="button" id="fullscreenButton" title="Fullscreen" aria-label="Toggle fullscreen">FS</button>
+        <button class="icon-action danger" type="button" id="resetButton" title="Reset demo" aria-label="Reset demo">RS</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="surface active" id="hostSurface" data-surface="host">
+        <div class="host-layout">
+          <section class="setup-panel" id="setupPanel" aria-labelledby="setupTitle">
+            <div class="section-kicker">Studio pilot</div>
+            <h1 id="setupTitle">420IQ show controller</h1>
+            <p class="setup-copy">
+              A local-first HTML pilot for a host with one player or one couple team. Built for YouTube recording now, with the audience path designed for later login and download play-along.
+            </p>
+
+            <div class="mode-switch" role="group" aria-label="Player mode">
+              <button class="mode-button active" type="button" data-mode="solo">Single player</button>
+              <button class="mode-button" type="button" data-mode="couple">Couple team</button>
+            </div>
+
+            <div class="field-grid">
+              <label class="field solo-field">
+                <span>Player name</span>
+                <input id="singleNameInput" type="text" value="Ari Stone" maxlength="40">
+              </label>
+              <label class="field couple-field" hidden>
+                <span>Partner one</span>
+                <input id="partnerOneInput" type="text" value="Nia" maxlength="40">
+              </label>
+              <label class="field couple-field" hidden>
+                <span>Partner two</span>
+                <input id="partnerTwoInput" type="text" value="Sol" maxlength="40">
+              </label>
+              <label class="field">
+                <span>Episode seed</span>
+                <input id="seedInput" type="text" value="420iq-youtube-pilot">
+              </label>
+              <label class="field">
+                <span>Question timer</span>
+                <input id="timerSecondsInput" type="number" min="5" max="300" step="5" value="30">
+              </label>
+            </div>
+
+            <div class="trusted-grid">
+              <label class="field">
+                <span>Trusted Circle A</span>
+                <input id="contactOneInput" type="text" value="Jordan" maxlength="40">
+              </label>
+              <label class="field">
+                <span>Trusted Circle B</span>
+                <input id="contactTwoInput" type="text" value="Maya" maxlength="40">
+              </label>
+              <label class="check-row">
+                <input id="contactOneAvailable" type="checkbox" checked>
+                <span>A available</span>
+              </label>
+              <label class="check-row">
+                <input id="contactTwoAvailable" type="checkbox" checked>
+                <span>B available</span>
+              </label>
+            </div>
+
+            <div class="setup-actions">
+              <button class="primary-button" id="startGameButton" type="button">Create show session</button>
+              <label class="secondary-button file-trigger">
+                Import question JSON
+                <input id="questionImportInput" type="file" accept="application/json,.json">
+              </label>
+              <label class="secondary-button file-trigger">
+                Restore backup
+                <input id="restoreBackupInput" type="file" accept="application/json,.json">
+              </label>
+            </div>
+
+            <div class="audit-strip">
+              <span>Reusable from prototype: local resume</span>
+              <span>question import</span>
+              <span>fullscreen</span>
+              <span>keyboard answers</span>
+            </div>
+
+            <p class="jurisdiction-disclaimer">Educational content only. Cannabis laws vary by jurisdiction and change over time — nothing here is legal, medical, or investment advice. Verify the current rules for your territory before broadcast.</p>
+          </section>
+
+          <section class="run-panel" id="runPanel" hidden aria-labelledby="runTitle">
+            <div class="run-header">
+              <div>
+                <div class="section-kicker" id="phaseLabel">PRE_SHOW</div>
+                <h2 id="runTitle">Host console</h2>
+              </div>
+              <div class="score-cluster">
+                <div>
+                  <span>Score</span>
+                  <strong id="scoreValue">0</strong>
+                </div>
+                <div>
+                  <span>Question</span>
+                  <strong id="questionCounter">0/0</strong>
+                </div>
+                <div class="timer-card" id="hostTimerCard">
+                  <span>Timer</span>
+                  <strong id="hostTimerValue">0:30</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="question-command">
+              <div class="question-meta" id="hostQuestionMeta">No active question</div>
+              <h3 id="hostQuestionStem">Create a show session to begin.</h3>
+              <div class="answer-grid" id="hostChoices"></div>
+            </div>
+
+            <div class="confidence-panel">
+              <div>
+                <span class="panel-label">Confidence Lock</span>
+                <p id="confidenceHelp">Choose the risk posture before locking the answer.</p>
+              </div>
+              <div class="segmented" id="confidenceButtons" role="group" aria-label="Confidence">
+                <button class="segment active" type="button" data-confidence="Curious">Curious 1x</button>
+                <button class="segment" type="button" data-confidence="Confident">Confident 1.5x</button>
+                <button class="segment" type="button" data-confidence="Certain">Certain 2x</button>
+              </div>
+            </div>
+
+            <div class="lifeline-panel" id="lifelinePanel">
+              <div class="panel-label">Lifeline output</div>
+              <p>Source Signal and Trusted Circle appear here when activated.</p>
+            </div>
+
+            <div class="final-panel" id="finalPanel" hidden>
+              <div>
+                <span class="panel-label">The 420 Decision</span>
+                <p>The host chooses a category and IQ target before the cinematic final question.</p>
+              </div>
+              <div class="final-controls">
+                <div class="final-field">
+                  <span class="control-label" id="finalCategoryLabel">Final category</span>
+                  <select id="finalCategorySelect" aria-labelledby="finalCategoryLabel">
+                    <option>Science & Plant Literacy</option>
+                    <option>Sports & Performance</option>
+                    <option>Music & Pop Culture</option>
+                    <option>History & Global Roots</option>
+                    <option>Law & Policy</option>
+                    <option>Culture & Media</option>
+                    <option>Public Health & Safety</option>
+                    <option>Business & Ethics</option>
+                    <option>Future & Innovation</option>
+                  </select>
+                </div>
+                <div class="final-field final-risk-field">
+                  <span class="control-label" id="riskBandLabel">IQ target</span>
+                  <div class="segmented compact final-risk-buttons" id="riskButtons" role="group" aria-labelledby="riskBandLabel">
+                    <button class="segment" type="button" data-risk="Hold" aria-label="Hold at 250 IQ">
+                      <span>Hold</span>
+                      <strong>250 IQ</strong>
+                    </button>
+                    <button class="segment active" type="button" data-risk="Rise" aria-label="Rise to 500 IQ">
+                      <span>Rise</span>
+                      <strong>500 IQ</strong>
+                    </button>
+                    <button class="segment" type="button" data-risk="Reach" aria-label="Reach 1,000 IQ">
+                      <span>Reach</span>
+                      <strong>1,000 IQ</strong>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="control-deck">
+              <button id="introButton" type="button">Intro</button>
+              <button id="readyButton" type="button">Ready</button>
+              <button id="liveButton" type="button">Go live</button>
+              <button id="sourceButton" type="button">Source Signal</button>
+              <button id="trustedButton" type="button">Trusted Circle</button>
+              <button id="lockButton" type="button">Lock answer</button>
+              <button id="revealButton" type="button">Reveal</button>
+              <button id="dropButton" type="button">Knowledge Drop</button>
+              <button id="commitButton" type="button">Commit score</button>
+              <button id="nextButton" type="button">Next question</button>
+              <button id="decisionButton" type="button">420 Decision</button>
+              <button id="openFinalButton" type="button">Open final</button>
+              <button id="completeButton" type="button">Complete</button>
+            </div>
+          </section>
+
+          <section class="recap-panel" id="recapPanel" hidden aria-labelledby="recapTitle"></section>
+
+          <aside class="show-side">
+            <section class="status-panel">
+              <div class="knowledge-ring" id="sideRing" aria-hidden="true">
+                <span>420</span>
+                <strong>IQ</strong>
+              </div>
+              <div>
+                <div class="section-kicker">Broadcast status</div>
+                <p id="cueText">Create a show session, then move through the finite-state show flow.</p>
+              </div>
+            </section>
+
+            <section class="status-panel">
+              <div>
+                <div class="section-kicker">Audience scale path</div>
+                <p>Audience login, QR join, leaderboard, badges and downloads are designed as Phase 3 surfaces. This YouTube pilot keeps audience mode locked.</p>
+              </div>
+              <div class="audience-lock">Audience PWA: locked</div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section class="surface" id="stageSurface" data-surface="stage">
+        <div class="stage-toolbar">
+          <button class="secondary-button" type="button" id="popoutStageButton">Pop out Stage window</button>
+          <span class="stage-toolbar-hint">Opens a clean 16:9 broadcast display that mirrors the live show in real time — drag it to your capture monitor and press F for fullscreen.</span>
+        </div>
+        <div class="stage-shell">
+          <div class="stage-frame" id="stageFrame">
+            <div class="stage-topline">
+              <span id="stagePhase">PRE_SHOW</span>
+              <span class="stage-timer" id="stageTimer">0:30</span>
+              <span id="stageDifficulty">420IQ</span>
+            </div>
+            <div class="stage-center">
+              <div class="stage-ring" id="stageRing" aria-hidden="true">
+                <span>420</span>
+                <strong>IQ</strong>
+              </div>
+              <div class="stage-score">
+                <span id="stagePlayer">Contestant</span>
+                <strong id="stageScore">0 IQ</strong>
+              </div>
+            </div>
+            <div class="stage-question">
+              <p id="stageQuestion">Create a session to load the first question.</p>
+              <div class="stage-answers" id="stageAnswers"></div>
+            </div>
+            <div class="stage-footer">
+              <span id="stageCue">YouTube master display</span>
+              <span id="stageChecksum">pack pending</span>
+            </div>
+            <div class="stage-recap" id="stageRecap" hidden></div>
+          </div>
+
+          <aside class="vertical-preview">
+            <div class="phone-frame" id="phoneFrame">
+              <div class="phone-topline">
+                <span id="verticalPhase">9:16 clip safe</span>
+                <span id="verticalTimer">0:30</span>
+              </div>
+              <div class="phone-ring" id="phoneRing" aria-hidden="true">
+                <span>420</span>
+                <strong>IQ</strong>
+              </div>
+              <div class="phone-score">
+                <span id="verticalPlayer">Contestant</span>
+                <strong id="verticalScore">0 IQ</strong>
+              </div>
+              <p id="verticalQuestion">Question moments stay centered for Shorts, Reels and TikTok.</p>
+              <div class="phone-bars" id="verticalBars"></div>
+              <div class="phone-cue" id="verticalCue">Vertical output idle</div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="surface" id="playerSurface" data-surface="player">
+        <div class="player-layout">
+          <section class="player-main">
+            <div class="section-kicker" id="playerModeLabel">Contestant display</div>
+            <h2 id="playerName">Contestant</h2>
+            <p id="playerPrompt">Waiting for the host.</p>
+            <div class="player-answer-grid" id="playerChoices"></div>
+          </section>
+          <aside class="player-side">
+            <div class="status-panel">
+              <div class="section-kicker">Question timer</div>
+              <div class="player-timer" id="playerTimer">0:30</div>
+              <p id="playerTimerCopy">The timer starts when the host sends the question live.</p>
+            </div>
+            <div class="status-panel">
+              <div class="section-kicker">Team mode</div>
+              <p id="teamModeText">Single player mode is ready.</p>
+            </div>
+            <div class="status-panel">
+              <div class="section-kicker">Used lifelines</div>
+              <div class="lifeline-state" id="lifelineState"></div>
+            </div>
+            <div class="status-panel">
+              <div class="section-kicker">Answer security</div>
+              <p>Contestant, stage and audience payloads hide the correct answer until the reveal event.</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="surface" id="packSurface" data-surface="pack">
+        <div class="pack-layout">
+          <section>
+            <div class="section-kicker">Question pack</div>
+            <h2>Balanced episode lane</h2>
+            <p class="surface-copy">The demo pack uses seeded ordering, difficulty checks and a fixed final-question slot. Demo records are not broadcast-approved sources.</p>
+            <div class="pack-toolbar">
+              <button class="secondary-button" type="button" id="exportPackButton">Export pack JSON</button>
+              <span class="pack-toolbar-hint">Save the current question bank to a file you keep under version control — the pack is your IP, not just browser state.</span>
+            </div>
+            <div class="pack-stats">
+              <div><span>Seed</span><strong id="packSeed">pending</strong></div>
+              <div><span>Checksum</span><strong id="packChecksum">pending</strong></div>
+              <div><span>Balance</span><strong id="packBalance">pending</strong></div>
+            </div>
+            <div class="question-table" id="questionTable"></div>
+          </section>
+
+          <aside class="migration-panel">
+            <div class="section-kicker">Prototype audit</div>
+            <h3>Useful functions preserved</h3>
+            <ul>
+              <li>Local persistence and resume after reload.</li>
+              <li>JSON question import with a migration adapter.</li>
+              <li>Fullscreen mode for stage capture.</li>
+              <li>Keyboard answer selection and focus-safe controls.</li>
+              <li>Leaderboard and completion feedback patterns.</li>
+            </ul>
+            <h3>Rebuilt for 420IQ</h3>
+            <ul>
+              <li>Original score engine instead of a generic quiz score.</li>
+              <li>Confidence Lock, Source Signal and Trusted Circle.</li>
+              <li>Event log and finite-state show control.</li>
+              <li>Host, stage, player, pack and audit surfaces.</li>
+              <li>Audience PWA route designed but locked for this no-audience pilot.</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section class="surface" id="auditSurface" data-surface="audit">
+        <div class="audit-layout">
+          <section>
+            <div class="section-kicker">Immutable event trail</div>
+            <h2>Game audit</h2>
+            <p class="surface-copy">Every state change is appended. Emergency rewind in production should add a compensating event instead of deleting history.</p>
+            <div class="event-log" id="eventLog"></div>
+          </section>
+          <aside class="payload-panel">
+            <div class="section-kicker">Public display preview</div>
+            <div class="public-payload-card" id="publicPayloadCard">
+              <p class="payload-empty">Create a show session to preview the safe public display.</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="age-gate" id="ageGate" role="dialog" aria-modal="true" aria-labelledby="ageGateTitle" hidden>
+    <div class="age-gate-card">
+      <div class="section-kicker">Before you continue</div>
+      <h2 id="ageGateTitle">Age &amp; jurisdiction check</h2>
+      <p>420IQ covers cannabis as a <strong>knowledge and media-literacy</strong> topic. It is educational content — not legal, medical, or investment advice.</p>
+      <p>Cannabis laws differ by country, state and territory and change over time. Confirm the correct rules for your jurisdiction before broadcasting or acting on anything shown here.</p>
+      <label class="age-gate-check">
+        <input type="checkbox" id="ageGateConfirm">
+        <span>I am of legal age in my jurisdiction and understand this is educational content.</span>
+      </label>
+      <div class="age-gate-actions">
+        <button class="primary-button" type="button" id="ageGateAccept" disabled>Enter 420IQ Studio</button>
+        <button class="secondary-button" type="button" id="ageGateDecline">Not now</button>
+      </div>
+      <p class="age-gate-note" id="ageGateNote" hidden>Confirmation is required to use 420IQ Studio.</p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="./engine.js?v=420iq19"></script>
+  <script src="./app.js?v=420iq19"></script>
+  <script>
+    (function register420IQServiceWorker() {
+      if (!("serviceWorker" in navigator)) {
+        return;
+      }
+
+      window.addEventListener("load", function registerOnLoad() {
+        navigator.serviceWorker.register("./service-worker.js").catch(function onError(error) {
+          console.warn("420IQ service worker registration failed.", error);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

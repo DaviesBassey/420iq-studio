@@ -1,0 +1,41 @@
+{
+  "id": "420iq-studio",
+  "name": "420IQ Studio",
+  "short_name": "420IQ",
+  "description": "Local-first host controller for the 420IQ quiz show: finite-state show flow, confidence lock, lifelines, timer, 9:16 preview and the 420 Decision final.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "./?access=admin#host",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#101014",
+  "background_color": "#101014",
+  "categories": ["entertainment", "games"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

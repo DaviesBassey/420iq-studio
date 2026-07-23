@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#101014"/>
+  <circle cx="256" cy="256" r="188" fill="none" stroke="#ffcb57" stroke-width="34"/>
+  <text x="256" y="262" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="150" font-weight="700" fill="#f8f4e8">420</text>
+  <text x="256" y="372" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="700" letter-spacing="6" fill="#ffcb57">IQ</text>
+</svg>
