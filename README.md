@@ -7,6 +7,9 @@ in the browser with no backend and no network calls at runtime.
 
 Packaged as an installable, offline-first **Progressive Web App (PWA)**.
 
+> **Working on this repo (human or AI)?** Read [`PLAN.md`](PLAN.md) first — it's
+> the scope contract: current branches, locked decisions, and phase order.
+
 ## Files
 
 | File | Role |
@@ -22,6 +25,7 @@ Packaged as an installable, offline-first **Progressive Web App (PWA)**.
 | [`package.json`](package.json) | Handoff scripts for local serving, tests and syntax checks |
 | [`tests/`](tests/) | `node --test` suites (engine, static UI, PWA, package) |
 | [`RECORDING.md`](RECORDING.md) | Dry-run recording checklist (two-monitor + OBS + full run-through) |
+| [`PLAN.md`](PLAN.md) | Scope contract — branches, locked decisions, phase order (read first) |
 
 ## Access URLs
 
