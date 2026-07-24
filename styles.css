@@ -684,20 +684,31 @@ main {
 .show-side,
 .player-side {
   display: grid;
-  gap: 14px;
+  gap: 18px;
 }
 
 .status-panel {
+  display: grid;
+  gap: 16px;
+  align-content: start;
   padding: var(--space-panel);
 }
 
 .section-kicker,
 .panel-label {
+  display: block;
   color: var(--amber-2);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* Side-rail panels stack their kicker as a direct grid child, so the panel's
+   own gap already spaces it — don't double up. */
+.status-panel > .section-kicker {
+  margin-bottom: 0;
 }
 
 h1,
@@ -2504,7 +2515,7 @@ body::after {
 }
 
 [data-theme="premium-mobile"] .player-side .status-panel p {
-  margin: 14px 0 0;
+  margin: 0;
   color: #e3e7f8;
   font-size: clamp(17px, 1.15vw, 20px);
   line-height: 1.55;
@@ -2524,7 +2535,6 @@ body::after {
 
 [data-theme="premium-mobile"] .lifeline-state {
   gap: 12px;
-  margin-top: 12px;
 }
 
 [data-theme="premium-mobile"] .state-pill {
