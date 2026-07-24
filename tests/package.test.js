@@ -14,12 +14,13 @@ test("package scripts expose the standard handoff commands", () => {
 
   assert.equal(manifest.private, true);
   assert.equal(manifest.type, "commonjs");
-  assert.equal(manifest.scripts.start, "python3 -m http.server 8787");
-  assert.equal(manifest.scripts.serve, "python3 -m http.server 8787");
+  assert.equal(manifest.scripts.start, "node server.js");
+  assert.equal(manifest.scripts.serve, "node server.js");
+  assert.equal(manifest.scripts.static, "python3 -m http.server 8787");
   assert.equal(manifest.scripts.test, "node --test tests/*.test.js");
   assert.equal(
     manifest.scripts.check,
-    "node --check app.js && node --check engine.js && node --check service-worker.js"
+    "node --check app.js && node --check engine.js && node --check service-worker.js && node --check server.js"
   );
 });
 

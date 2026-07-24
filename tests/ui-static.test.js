@@ -130,10 +130,11 @@ test("premium player screen uses roomy typography and balanced side-card padding
   assert.match(css, /\[data-theme="premium-mobile"\]\s+\.player-main h2\s*\{[\s\S]*font-size:\s*clamp\(42px,\s*4\.4vw,\s*60px\)[\s\S]*line-height:\s*1\.18[\s\S]*overflow-wrap:\s*anywhere/);
   assert.match(css, /\[data-theme="premium-mobile"\]\s+\.player-main p\s*\{[\s\S]*max-width:\s*780px[\s\S]*font-size:\s*clamp\(17px,\s*1\.35vw,\s*21px\)/);
   assert.match(css, /\[data-theme="premium-mobile"\]\s+\.player-choice\s*\{[\s\S]*min-height:\s*clamp\(58px,\s*5\.2vw,\s*66px\)[\s\S]*padding:\s*14px\s+18px[\s\S]*overflow-wrap:\s*anywhere/);
-  assert.match(css, /\[data-theme="premium-mobile"\]\s+\.player-side \.status-panel\s*\{[\s\S]*padding:\s*clamp\(24px,\s*2\.2vw,\s*36px\)/);
-  assert.match(css, /\[data-theme="premium-mobile"\]\s+\.player-side \.status-panel p\s*\{[\s\S]*line-height:\s*1\.55/);
+  assert.match(css, /--status-content-gap:\s*clamp\(16px,\s*1\.4vw,\s*22px\)/);
+  assert.match(css, /\[data-theme="premium-mobile"\]\s+\.player-side \.status-panel\s*\{[\s\S]*display:\s*grid[\s\S]*gap:\s*var\(--status-content-gap\)[\s\S]*padding:\s*clamp\(24px,\s*2\.2vw,\s*36px\)/);
+  assert.match(css, /\[data-theme="premium-mobile"\]\s+\.player-side \.status-panel p\s*\{[\s\S]*margin:\s*0[\s\S]*line-height:\s*1\.55/);
   assert.match(css, /\[data-theme="premium-mobile"\]\s+\.player-timer\s*\{[\s\S]*min-height:\s*110px[\s\S]*display:\s*grid[\s\S]*padding:\s*22px\s+var\(--space-control-x\)/);
-  assert.match(css, /\[data-theme="premium-mobile"\]\s+\.lifeline-state\s*\{[\s\S]*gap:\s*12px/);
+  assert.match(css, /\[data-theme="premium-mobile"\]\s+\.lifeline-state\s*\{[\s\S]*gap:\s*12px[\s\S]*margin-top:\s*0/);
   assert.match(css, /\[data-theme="premium-mobile"\]\s+\.state-pill\s*\{[\s\S]*min-height:\s*54px/);
 });
 
@@ -203,8 +204,8 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq19"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq19"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq23"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq23"><\/script>/);
 });
 
 test("host-only undo reverts the last step via a compensating engine event", () => {
@@ -262,7 +263,36 @@ test("stage display mode and cross-window sync power the two-monitor broadcast",
   assert.match(css, /\[data-access="stage"\] \.stage-toolbar,\s*\n\[data-access="stage"\] \.vertical-preview/);
 });
 
-test("end-of-show recap renders on COMPLETE for host and stage", () => {
+test("server-backed phone sessions expose role-scoped sync hooks", () => {
+  const html = readProjectFile("index.html");
+  const app = readProjectFile("app.js");
+  const css = readProjectFile("styles.css");
+
+  assert.match(html, /id="createRemoteSessionButton"/);
+  assert.match(html, /id="remoteSessionPanel"/);
+  assert.match(html, /id="playerSessionLink"/);
+  assert.match(html, /id="playerJoinQr"/);
+  assert.match(html, /data-copy-target="playerSessionLink"/);
+  assert.match(app, /function readServerSyncConfig\(\)/);
+  assert.match(app, /function createRemoteSession\(\)/);
+  assert.match(app, /fetch\("\.\/api\/sessions"/);
+  assert.match(app, /function copySessionLink\(targetId\)/);
+  assert.match(app, /navigator\.clipboard\.writeText\(input\.value\)/);
+  assert.match(app, /function renderPlayerJoinQr\(playerUrl\)/);
+  assert.match(app, /function createQrCodeMatrix\(value\)/);
+  assert.match(app, /function reedSolomonRemainder\(data, divisor\)/);
+  assert.match(app, /function connectServerSync\(\)/);
+  assert.match(app, /new EventSource\(eventsUrl\.href\)/);
+  assert.match(app, /function publishServerState\(\)/);
+  assert.match(app, /Authorization": `Bearer \$\{serverSync\.token\}`/);
+  assert.match(app, /function submitPlayerAnswer\(choiceIndex\)/);
+  assert.match(app, /function handleServerPlayerAnswer\(payload\)/);
+  assert.match(css, /\.remote-session-panel/);
+  assert.match(css, /\.session-qr-card/);
+  assert.match(css, /\.copy-session-link/);
+});
+
+test("end-of-show recap renders on COMPLETE for host, stage and player", () => {
   const html = readProjectFile("index.html");
   const app = readProjectFile("app.js");
   const css = readProjectFile("styles.css");
@@ -273,11 +303,18 @@ test("end-of-show recap renders on COMPLETE for host and stage", () => {
   assert.match(app, /function renderRecap\(\)/);
   assert.match(app, /function renderHostRecap\(/);
   assert.match(app, /function renderStageRecap\(/);
+  assert.match(app, /function renderPlayerComplete\(recap, members\)/);
   assert.match(app, /const isComplete = Boolean\(game && game\.phase === "COMPLETE"\)/);
   assert.match(app, /dom\.runPanel\.hidden = !game \|\| isComplete/);
+  assert.match(app, /if \(game\.phase === "COMPLETE"\) \{[\s\S]*renderPlayerComplete\(computeRecap\(\), members\);[\s\S]*return;[\s\S]*\}/);
+  assert.match(app, /dom\.playerModeLabel\.textContent = "Show complete"/);
+  assert.match(app, /dom\.playerTimer\.textContent = "DONE"/);
+  assert.match(app, /player-complete-card/);
   assert.match(css, /\.recap-block\.accent-amber/);
   assert.match(css, /\.recap-row\.is-correct/);
   assert.match(css, /\.stage-recap\s*\{[\s\S]*position:\s*absolute/);
+  assert.match(css, /\.player-complete-card/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.player-complete-stats\s*\{[\s\S]*grid-template-columns:\s*1fr/);
 });
 
 test("difficulty and category render as semantic color-coded chips", () => {
@@ -320,6 +357,35 @@ test("jurisdiction disclaimer is present and packs can be exported for version c
   assert.match(app, /function exportPack\(\)/);
   assert.match(app, /type: "420iq-pack"/);
   assert.match(app, /questions: questionBank/);
+});
+
+test("question import path bounds file size, record count and question schema", () => {
+  const app = readProjectFile("app.js");
+
+  assert.match(app, /const MAX_IMPORT_BYTES = 512 \* 1024/);
+  assert.match(app, /const MAX_IMPORTED_QUESTIONS = 80/);
+  assert.match(app, /if \(file\.size > MAX_IMPORT_BYTES\)/);
+  assert.match(app, /if \(sourceText\.length > MAX_IMPORT_BYTES\)/);
+  assert.match(app, /function validateImportedQuestion\(item, index, importRunId\)/);
+  assert.match(app, /choices\.length < 2 \|\| choices\.length > ANSWER_LETTERS\.length/);
+  assert.match(app, /correctIndex < 0 \|\| correctIndex >= choices\.length/);
+  assert.match(app, /VALID_DIFFICULTIES\.has\(item\.difficulty\)/);
+  assert.match(app, /VALID_SENSITIVITY_TIERS\.has\(item\.sensitivity\)/);
+  assert.match(app, /source\.length > MAX_IMPORTED_QUESTIONS/);
+});
+
+test("public export emits a redacted share package separate from private audit", () => {
+  const html = readProjectFile("index.html");
+  const app = readProjectFile("app.js");
+
+  assert.match(html, /id="exportPublicButton"/);
+  assert.match(app, /function buildPublicExport\(\)/);
+  assert.match(app, /type: "420iq-public-export"/);
+  assert.match(app, /question: publicQuestion/);
+  assert.match(app, /results: \(Array\.isArray\(game\.results\) \? game\.results : \[\]\)\.map/);
+  assert.match(app, /function exportPublicRecap\(\)/);
+  assert.match(app, /downloadJsonFile\(buildPublicExport\(\), "420iq-public-recap"\)/);
+  assert.match(app, /dom\.exportPublicButton\.addEventListener\("click", exportPublicRecap\)/);
 });
 
 test("the default question pack is a tracked, importable JSON artifact", () => {

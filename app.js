@@ -10,9 +10,16 @@
   const BACKUP_FILE_TYPE = "420iq-backup";
   const HISTORY_LIMIT = 40;
   const AGE_ACK_KEY = "420iqAgeAcknowledgedV1";
+  const MAX_IMPORT_BYTES = 512 * 1024;
+  const MAX_IMPORTED_QUESTIONS = 80;
+  const MAX_STEM_LENGTH = 320;
+  const MAX_CHOICE_LENGTH = 120;
+  const MAX_BODY_COPY_LENGTH = 520;
   const ANSWER_LETTERS = ["A", "B", "C", "D", "E", "F"];
   const ACCESS_MODES = new Set(["admin", "player", "stage"]);
   const VALID_TABS = new Set(["host", "stage", "player", "pack", "audit"]);
+  const VALID_DIFFICULTIES = new Set(["Spark", "Flame", "Inferno", "Wild 420", "Final"]);
+  const VALID_SENSITIVITY_TIERS = new Set(["Tier 1", "Tier 2", "Tier 3"]);
   const SYNC_CHANNEL_NAME = "420iq-sync";
   const FINAL_CATEGORY_OPTIONS = [
     "Science & Plant Literacy",
@@ -432,6 +439,14 @@
     decisionButton: document.getElementById("decisionButton"),
     openFinalButton: document.getElementById("openFinalButton"),
     completeButton: document.getElementById("completeButton"),
+    createRemoteSessionButton: document.getElementById("createRemoteSessionButton"),
+    remoteSessionPanel: document.getElementById("remoteSessionPanel"),
+    remoteSessionStatus: document.getElementById("remoteSessionStatus"),
+    hostSessionLink: document.getElementById("hostSessionLink"),
+    playerSessionLink: document.getElementById("playerSessionLink"),
+    stageSessionLink: document.getElementById("stageSessionLink"),
+    playerJoinQr: document.getElementById("playerJoinQr"),
+    copySessionButtons: Array.from(document.querySelectorAll("[data-copy-target]")),
     stageFrame: document.getElementById("stageFrame"),
     popoutStageButton: document.getElementById("popoutStageButton"),
     stagePhase: document.getElementById("stagePhase"),
@@ -468,6 +483,7 @@
     questionTable: document.getElementById("questionTable"),
     eventLog: document.getElementById("eventLog"),
     publicPayloadCard: document.getElementById("publicPayloadCard"),
+    exportPublicButton: document.getElementById("exportPublicButton"),
     exportPackButton: document.getElementById("exportPackButton"),
     ageGate: document.getElementById("ageGate"),
     ageGateConfirm: document.getElementById("ageGateConfirm"),
@@ -495,6 +511,9 @@
   let timeoutCuePlayed = false;
   let syncChannel = null;
   const accessMode = readAccessMode();
+  let serverSync = readServerSyncConfig();
+  let serverEventSource = null;
+  let latestRemoteSession = null;
 
   if (accessMode === "stage") {
     // The Stage window is a silent broadcast display; the host machine owns
@@ -502,10 +521,50 @@
     soundEnabled = false;
   }
 
+  if (serverSync && isDisplayAccess()) {
+    // Server-linked player/stage windows wait for role-scoped remote state
+    // instead of rendering whatever this browser last stored locally.
+    game = null;
+  }
+
   function readAccessMode() {
     const params = new URLSearchParams(window.location.search);
     const requestedMode = String(params.get("access") || params.get("role") || "admin").toLowerCase();
     return ACCESS_MODES.has(requestedMode) ? requestedMode : "admin";
+  }
+
+  function roleForAccessMode() {
+    if (accessMode === "player") {
+      return "player";
+    }
+
+    if (accessMode === "stage") {
+      return "stage";
+    }
+
+    return "host";
+  }
+
+  function readServerSyncConfig() {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = String(params.get("session") || "").trim();
+    const token = String(params.get("token") || "").trim();
+
+    if (!sessionId || !token) {
+      return null;
+    }
+
+    const requestedRole = String(params.get("role") || "").toLowerCase();
+    const role = ["host", "player", "stage"].includes(requestedRole)
+      ? requestedRole
+      : roleForAccessMode();
+
+    return {
+      enabled: true,
+      sessionId,
+      token,
+      role
+    };
   }
 
   function readInitialSoundEnabled() {
@@ -597,6 +656,7 @@
     }
 
     broadcastState();
+    publishServerState();
   }
 
   function showToast(message) {
@@ -863,6 +923,18 @@
     dom.playerTimer.textContent = timerText;
     dom.verticalTimer.textContent = timerText;
 
+    if (game && game.phase === "COMPLETE") {
+      dom.playerTimer.textContent = "DONE";
+      dom.playerTimerCopy.textContent = "Show complete. Final score is locked.";
+      [dom.hostTimerCard, dom.stageTimer, dom.playerTimer, dom.verticalTimer].forEach(element => {
+        element.classList.remove("urgent", "expired");
+      });
+      dom.phoneFrame.classList.remove("urgent", "expired");
+      lastTickSecond = null;
+      timeoutCuePlayed = false;
+      return;
+    }
+
     [dom.hostTimerCard, dom.stageTimer, dom.playerTimer, dom.verticalTimer].forEach(element => {
       element.classList.toggle("urgent", urgent && timerRunning);
       element.classList.toggle("expired", snapshot.expired && timerRunning);
@@ -1015,6 +1087,599 @@
     }
   }
 
+  function sessionEndpoint(path) {
+    return `./api/sessions/${encodeURIComponent(serverSync.sessionId)}${path}`;
+  }
+
+  function renderRemoteSessionPanel() {
+    if (!dom.remoteSessionPanel) {
+      return;
+    }
+
+    const displayMode = isDisplayAccess();
+    dom.remoteSessionPanel.hidden = displayMode;
+
+    if (dom.createRemoteSessionButton) {
+      dom.createRemoteSessionButton.hidden = displayMode;
+      dom.createRemoteSessionButton.disabled = displayMode;
+    }
+
+    if (displayMode) {
+      return;
+    }
+
+    const links = latestRemoteSession && latestRemoteSession.links ? latestRemoteSession.links : null;
+    const connected = Boolean(serverSync && serverSync.enabled);
+    dom.remoteSessionStatus.textContent = connected
+      ? `Server sync active for session ${serverSync.sessionId}. Share the player-only link with the phone.`
+      : "Create a server-backed session to mirror the show to a phone.";
+
+    if (dom.hostSessionLink) dom.hostSessionLink.value = links ? links.host : "";
+    if (dom.playerSessionLink) dom.playerSessionLink.value = links ? links.player : "";
+    if (dom.stageSessionLink) dom.stageSessionLink.value = links ? links.stage : "";
+    renderPlayerJoinQr(links ? links.player : "");
+  }
+
+  async function copySessionLink(targetId) {
+    const input = document.getElementById(targetId);
+    if (!input || !input.value) {
+      showToast("Create a phone session first.");
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(input.value);
+      } else {
+        input.select();
+        document.execCommand("copy");
+        input.blur();
+      }
+      showToast("Session link copied.");
+    } catch (error) {
+      input.select();
+      showToast("Link selected. Copy it from the field.");
+    }
+  }
+
+  function renderPlayerJoinQr(playerUrl) {
+    const canvas = dom.playerJoinQr;
+    if (!canvas) {
+      return;
+    }
+
+    try {
+      if (!playerUrl) {
+        drawQrPlaceholder(canvas, "Create session");
+        return;
+      }
+
+      const matrix = createQrCodeMatrix(playerUrl);
+      drawQrMatrix(canvas, matrix);
+    } catch (error) {
+      drawQrPlaceholder(canvas, "Copy link");
+    }
+  }
+
+  function drawQrPlaceholder(canvas, label) {
+    const context = canvas.getContext("2d");
+    const size = canvas.width;
+
+    context.fillStyle = "#10111b";
+    context.fillRect(0, 0, size, size);
+    context.strokeStyle = "rgba(65, 255, 242, 0.5)";
+    context.lineWidth = 2;
+    context.strokeRect(9, 9, size - 18, size - 18);
+    context.fillStyle = "#c6fff9";
+    context.font = "800 15px sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(label, size / 2, size / 2);
+  }
+
+  function drawQrMatrix(canvas, matrix) {
+    const context = canvas.getContext("2d");
+    const moduleCount = matrix.length;
+    const quietZone = 4;
+    const cellSize = Math.floor(canvas.width / (moduleCount + quietZone * 2));
+    const qrSize = cellSize * (moduleCount + quietZone * 2);
+    const offset = Math.floor((canvas.width - qrSize) / 2);
+
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#10111b";
+
+    matrix.forEach((row, y) => {
+      row.forEach((dark, x) => {
+        if (!dark) {
+          return;
+        }
+
+        context.fillRect(
+          offset + (x + quietZone) * cellSize,
+          offset + (y + quietZone) * cellSize,
+          cellSize,
+          cellSize
+        );
+      });
+    });
+  }
+
+  function utf8Bytes(value) {
+    if ("TextEncoder" in window) {
+      return Array.from(new TextEncoder().encode(value));
+    }
+
+    return Array.from(unescape(encodeURIComponent(value))).map(character => character.charCodeAt(0));
+  }
+
+  function createQrCodeMatrix(value) {
+    const version = 10;
+    const size = version * 4 + 17;
+    const dataCodewordCount = 274;
+    const maxByteLength = 271;
+    const bytes = utf8Bytes(String(value));
+
+    if (bytes.length > maxByteLength) {
+      throw new Error("Player link is too long for the local QR generator.");
+    }
+
+    const modules = Array.from({ length: size }, () => Array(size).fill(false));
+    const functions = Array.from({ length: size }, () => Array(size).fill(false));
+
+    function setModule(x, y, dark, isFunction = false) {
+      if (x < 0 || y < 0 || x >= size || y >= size) {
+        return;
+      }
+
+      modules[y][x] = dark === true;
+      if (isFunction) {
+        functions[y][x] = true;
+      }
+    }
+
+    function setFunctionModule(x, y, dark) {
+      setModule(x, y, dark, true);
+    }
+
+    function drawFinderPattern(centerX, centerY) {
+      for (let y = -4; y <= 4; y += 1) {
+        for (let x = -4; x <= 4; x += 1) {
+          const distance = Math.max(Math.abs(x), Math.abs(y));
+          const dark = distance !== 2 && distance <= 3;
+          setFunctionModule(centerX + x, centerY + y, dark);
+        }
+      }
+    }
+
+    function drawAlignmentPattern(centerX, centerY) {
+      for (let y = -2; y <= 2; y += 1) {
+        for (let x = -2; x <= 2; x += 1) {
+          const distance = Math.max(Math.abs(x), Math.abs(y));
+          setFunctionModule(centerX + x, centerY + y, distance !== 1);
+        }
+      }
+    }
+
+    function drawFunctionPatterns(maskPattern) {
+      drawFinderPattern(3, 3);
+      drawFinderPattern(size - 4, 3);
+      drawFinderPattern(3, size - 4);
+
+      [6, 28, 50].forEach(y => {
+        [6, 28, 50].forEach(x => {
+          if (!functions[y][x]) {
+            drawAlignmentPattern(x, y);
+          }
+        });
+      });
+
+      for (let i = 8; i < size - 8; i += 1) {
+        const dark = i % 2 === 0;
+        setFunctionModule(6, i, dark);
+        setFunctionModule(i, 6, dark);
+      }
+
+      drawFormatBits(maskPattern);
+      drawVersionBits(version);
+    }
+
+    function getBit(valueToRead, bitIndex) {
+      return ((valueToRead >>> bitIndex) & 1) !== 0;
+    }
+
+    function drawFormatBits(maskPattern) {
+      const errorCorrectionBits = 1;
+      const data = (errorCorrectionBits << 3) | maskPattern;
+      let remainder = data;
+      for (let i = 0; i < 10; i += 1) {
+        remainder = (remainder << 1) ^ (((remainder >>> 9) & 1) * 0x537);
+      }
+      const bits = ((data << 10) | remainder) ^ 0x5412;
+
+      for (let i = 0; i <= 5; i += 1) setFunctionModule(8, i, getBit(bits, i));
+      setFunctionModule(8, 7, getBit(bits, 6));
+      setFunctionModule(8, 8, getBit(bits, 7));
+      setFunctionModule(7, 8, getBit(bits, 8));
+      for (let i = 9; i < 15; i += 1) setFunctionModule(14 - i, 8, getBit(bits, i));
+
+      for (let i = 0; i < 8; i += 1) setFunctionModule(size - 1 - i, 8, getBit(bits, i));
+      for (let i = 8; i < 15; i += 1) setFunctionModule(8, size - 15 + i, getBit(bits, i));
+      setFunctionModule(8, size - 8, true);
+    }
+
+    function drawVersionBits(versionNumber) {
+      let remainder = versionNumber;
+      for (let i = 0; i < 12; i += 1) {
+        remainder = (remainder << 1) ^ (((remainder >>> 11) & 1) * 0x1f25);
+      }
+      const bits = (versionNumber << 12) | remainder;
+
+      for (let i = 0; i < 18; i += 1) {
+        const bit = getBit(bits, i);
+        const a = size - 11 + (i % 3);
+        const b = Math.floor(i / 3);
+        setFunctionModule(a, b, bit);
+        setFunctionModule(b, a, bit);
+      }
+    }
+
+    const maskPattern = 2;
+    drawFunctionPatterns(maskPattern);
+    const codewords = createQrCodewords(bytes, dataCodewordCount);
+    let bitIndex = 0;
+
+    for (let right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) {
+        right -= 1;
+      }
+
+      for (let vertical = 0; vertical < size; vertical += 1) {
+        const upward = ((size - 1 - right) & 2) === 0;
+        const y = upward ? size - 1 - vertical : vertical;
+
+        for (let column = 0; column < 2; column += 1) {
+          const x = right - column;
+          if (functions[y][x]) {
+            continue;
+          }
+
+          const dark = bitIndex < codewords.length * 8
+            ? getBit(codewords[bitIndex >>> 3], 7 - (bitIndex & 7))
+            : false;
+          const masked = dark !== (x % 3 === 0);
+          setModule(x, y, masked, false);
+          bitIndex += 1;
+        }
+      }
+    }
+
+    drawFormatBits(maskPattern);
+    return modules;
+  }
+
+  function createQrCodewords(dataBytes, dataCodewordCount) {
+    const bits = [];
+    const appendBits = (value, length) => {
+      for (let i = length - 1; i >= 0; i -= 1) {
+        bits.push((value >>> i) & 1);
+      }
+    };
+
+    appendBits(0x4, 4);
+    appendBits(dataBytes.length, 16);
+    dataBytes.forEach(byte => appendBits(byte, 8));
+
+    const capacityBits = dataCodewordCount * 8;
+    for (let i = 0; i < 4 && bits.length < capacityBits; i += 1) {
+      bits.push(0);
+    }
+    while (bits.length % 8 !== 0) {
+      bits.push(0);
+    }
+
+    const dataCodewords = [];
+    for (let i = 0; i < bits.length; i += 8) {
+      let codeword = 0;
+      for (let j = 0; j < 8; j += 1) {
+        codeword = (codeword << 1) | bits[i + j];
+      }
+      dataCodewords.push(codeword);
+    }
+
+    for (let padByte = 0xec; dataCodewords.length < dataCodewordCount; padByte ^= 0xfd) {
+      dataCodewords.push(padByte);
+    }
+
+    return appendQrErrorCorrection(dataCodewords);
+  }
+
+  function appendQrErrorCorrection(dataCodewords) {
+    const blockCount = 4;
+    const shortBlockCount = 2;
+    const shortDataCount = 68;
+    const longDataCount = 69;
+    const errorCorrectionCodewords = 18;
+    const divisor = reedSolomonDivisor(errorCorrectionCodewords);
+    const blocks = [];
+    let offset = 0;
+
+    for (let blockIndex = 0; blockIndex < blockCount; blockIndex += 1) {
+      const dataCount = blockIndex < shortBlockCount ? shortDataCount : longDataCount;
+      const data = dataCodewords.slice(offset, offset + dataCount);
+      offset += dataCount;
+      blocks.push({
+        data,
+        errorCorrection: reedSolomonRemainder(data, divisor)
+      });
+    }
+
+    const result = [];
+    for (let i = 0; i < longDataCount; i += 1) {
+      blocks.forEach(block => {
+        if (i < block.data.length) {
+          result.push(block.data[i]);
+        }
+      });
+    }
+    for (let i = 0; i < errorCorrectionCodewords; i += 1) {
+      blocks.forEach(block => result.push(block.errorCorrection[i]));
+    }
+
+    return result;
+  }
+
+  function reedSolomonDivisor(degree) {
+    const result = Array(degree).fill(0);
+    result[degree - 1] = 1;
+    let root = 1;
+
+    for (let i = 0; i < degree; i += 1) {
+      for (let j = 0; j < result.length; j += 1) {
+        result[j] = gfMultiply(result[j], root);
+        if (j + 1 < result.length) {
+          result[j] ^= result[j + 1];
+        }
+      }
+      root = gfMultiply(root, 0x02);
+    }
+
+    return result;
+  }
+
+  function reedSolomonRemainder(data, divisor) {
+    const result = Array(divisor.length).fill(0);
+
+    data.forEach(byte => {
+      const factor = byte ^ result.shift();
+      result.push(0);
+      divisor.forEach((coefficient, index) => {
+        result[index] ^= gfMultiply(coefficient, factor);
+      });
+    });
+
+    return result;
+  }
+
+  function gfMultiply(left, right) {
+    let x = left;
+    let y = right;
+    let result = 0;
+
+    for (let i = 0; i < 8; i += 1) {
+      if ((y & 1) !== 0) {
+        result ^= x;
+      }
+      const carry = (x & 0x80) !== 0;
+      x = (x << 1) & 0xff;
+      if (carry) {
+        x ^= 0x1d;
+      }
+      y >>>= 1;
+    }
+
+    return result;
+  }
+
+  function syncHostSessionUrl(session) {
+    if (!session || !session.sessionId || !session.hostToken) {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("access", "admin");
+    url.searchParams.set("role", "host");
+    url.searchParams.set("session", session.sessionId);
+    url.searchParams.set("token", session.hostToken);
+    url.searchParams.set("sfx", soundEnabled ? "on" : "off");
+    url.hash = "#host";
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  async function createRemoteSession() {
+    if (!dom.createRemoteSessionButton) {
+      return;
+    }
+
+    dom.createRemoteSessionButton.disabled = true;
+    try {
+      const response = await fetch("./api/sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          origin: window.location.origin
+        })
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error || "Phone session could not be created.");
+      }
+
+      latestRemoteSession = payload;
+      serverSync = {
+        enabled: true,
+        sessionId: payload.sessionId,
+        token: payload.hostToken,
+        role: "host"
+      };
+
+      syncHostSessionUrl(payload);
+      renderRemoteSessionPanel();
+      connectServerSync();
+      publishServerState();
+      showToast("Phone session ready. Open the player-only link on the phone.");
+    } catch (error) {
+      showToast("Run npm start to enable phone sessions.");
+    } finally {
+      dom.createRemoteSessionButton.disabled = false;
+    }
+  }
+
+  async function loadRemoteSessionInfo() {
+    if (!serverSync || !serverSync.enabled || serverSync.role !== "host") {
+      renderRemoteSessionPanel();
+      return;
+    }
+
+    try {
+      const response = await fetch(sessionEndpoint(""), {
+        headers: {
+          "Authorization": `Bearer ${serverSync.token}`
+        }
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error || "Session unavailable.");
+      }
+
+      latestRemoteSession = payload;
+      renderRemoteSessionPanel();
+      if (payload.game && !game) {
+        game = payload.game;
+        currentMode = game.mode === "couple" ? "couple" : "solo";
+        render();
+      }
+    } catch (error) {
+      renderRemoteSessionPanel();
+    }
+  }
+
+  function connectServerSync() {
+    if (serverEventSource) {
+      serverEventSource.close();
+      serverEventSource = null;
+    }
+
+    if (!serverSync || !serverSync.enabled || !("EventSource" in window)) {
+      renderRemoteSessionPanel();
+      return;
+    }
+
+    const eventsUrl = new URL(sessionEndpoint("/events"), window.location.href);
+    eventsUrl.searchParams.set("role", serverSync.role);
+    eventsUrl.searchParams.set("token", serverSync.token);
+
+    serverEventSource = new EventSource(eventsUrl.href);
+    serverEventSource.addEventListener("connected", () => {
+      renderRemoteSessionPanel();
+    });
+    serverEventSource.addEventListener("state", event => {
+      if (serverSync.role === "host") {
+        return;
+      }
+
+      try {
+        const payload = JSON.parse(event.data);
+        applyIncomingGame(payload.game);
+      } catch (error) {
+        console.warn("Could not apply remote 420IQ state.", error);
+      }
+    });
+    serverEventSource.addEventListener("playerAnswer", event => {
+      try {
+        handleServerPlayerAnswer(JSON.parse(event.data));
+      } catch (error) {
+        console.warn("Could not read remote player answer.", error);
+      }
+    });
+    serverEventSource.onerror = () => {
+      renderRemoteSessionPanel();
+    };
+  }
+
+  function publishServerState() {
+    if (!serverSync || !serverSync.enabled || serverSync.role !== "host" || !game) {
+      return;
+    }
+
+    fetch(sessionEndpoint("/state"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serverSync.token}`
+      },
+      body: JSON.stringify({ game })
+    }).catch(error => {
+      console.warn("Could not publish 420IQ remote state.", error);
+    });
+  }
+
+  async function submitPlayerAnswer(choiceIndex) {
+    if (!serverSync || !serverSync.enabled || serverSync.role !== "player") {
+      return;
+    }
+
+    try {
+      const response = await fetch(sessionEndpoint("/player-answer"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${serverSync.token}`
+        },
+        body: JSON.stringify({
+          choiceIndex,
+          confidence: selectedConfidence,
+          participant: game && game.participant ? game.participant.displayName : "Player"
+        })
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || "Answer was not sent.");
+      }
+    } catch (error) {
+      showToast("Answer selected locally, but the host link did not receive it.");
+    }
+  }
+
+  function handleServerPlayerAnswer(payload) {
+    if (!serverSync || serverSync.role !== "host" || !game || !payload) {
+      return;
+    }
+
+    const canAcceptAnswer = (game.phase === "QUESTION_LIVE" || game.phase === "LIFELINE_ACTIVE") && !game.lockedAnswer;
+    if (!canAcceptAnswer) {
+      return;
+    }
+
+    const publicQuestion = IQ.getPublicQuestion(game);
+    const choiceIndex = Number(payload.choiceIndex);
+    if (!publicQuestion || !Number.isInteger(choiceIndex) || choiceIndex < 0 || choiceIndex >= publicQuestion.choices.length) {
+      return;
+    }
+
+    selectedChoiceIndex = choiceIndex;
+    if (["Curious", "Confident", "Certain"].includes(payload.confidence)) {
+      selectedConfidence = payload.confidence;
+    }
+
+    render();
+    playCue("answerSelect");
+    showToast(`${payload.participant || "Player"} selected ${ANSWER_LETTERS[choiceIndex] || choiceIndex + 1}. Host can lock it.`);
+  }
+
   function initAgeGate() {
     // The broadcast Stage display must never show a modal (OBS would capture it),
     // and a browser that already acknowledged is not prompted again.
@@ -1046,6 +1711,20 @@
     });
   }
 
+  function downloadJsonFile(payload, filenamePrefix) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${filenamePrefix}-${Date.now()}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   function exportPack() {
     const bundle = {
       type: "420iq-pack",
@@ -1053,22 +1732,14 @@
       exportedAt: new Date().toISOString(),
       questions: questionBank
     };
-    const blob = new Blob([JSON.stringify(bundle, null, 2)], {
-      type: "application/json"
-    });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `420iq-pack-${Date.now()}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    downloadJsonFile(bundle, "420iq-pack");
     showToast(`Exported ${questionBank.length} questions. Commit the file to version control.`);
   }
 
   function popoutStage() {
-    const stageUrl = `${window.location.pathname}?access=stage#stage`;
+    const stageUrl = latestRemoteSession && latestRemoteSession.links
+      ? latestRemoteSession.links.stage
+      : `${window.location.pathname}?access=stage#stage`;
     const stageWindow = window.open(
       stageUrl,
       "420iq-stage",
@@ -1112,6 +1783,10 @@
 
     if (dom.popoutStageButton) {
       dom.popoutStageButton.hidden = accessMode !== "admin";
+    }
+
+    if (dom.remoteSessionPanel) {
+      dom.remoteSessionPanel.hidden = displayMode;
     }
 
     dom.surfaces.forEach(surface => {
@@ -1417,17 +2092,7 @@
       game,
       questionBank
     };
-    const blob = new Blob([JSON.stringify(bundle, null, 2)], {
-      type: "application/json"
-    });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `420iq-backup-${Date.now()}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    downloadJsonFile(bundle, "420iq-backup");
     showToast("Recovery backup downloaded.");
   }
 
@@ -1486,6 +2151,7 @@
     renderPack();
     renderAudit();
     renderRecap();
+    renderRemoteSessionPanel();
     updateTimerDisplays({ allowSfx: false });
   }
 
@@ -1690,6 +2356,7 @@
         selectedChoiceIndex = index;
         render();
         playCue("answerSelect");
+        submitPlayerAnswer(index);
       });
 
       container.appendChild(button);
@@ -1950,6 +2617,7 @@
         selectedChoiceIndex = index;
         render();
         playCue("answerSelect");
+        submitPlayerAnswer(index);
       });
 
       dom.verticalBars.appendChild(button);
@@ -1967,8 +2635,14 @@
       return;
     }
 
-    const publicQuestion = IQ.getPublicQuestion(game);
     const members = game.participant.members.map(member => member.name).join(" and ");
+
+    if (game.phase === "COMPLETE") {
+      renderPlayerComplete(computeRecap(), members);
+      return;
+    }
+
+    const publicQuestion = IQ.getPublicQuestion(game);
 
     dom.playerModeLabel.textContent = game.mode === "couple" ? "Couple contestant display" : "Single contestant display";
     dom.playerName.textContent = game.participant.displayName;
@@ -1980,6 +2654,39 @@
       : `${members} plays solo against the 420IQ lane.`;
 
     renderChoiceButtons(dom.playerChoices, publicQuestion, "player-choice");
+    renderLifelineState();
+  }
+
+  function renderPlayerComplete(recap, members) {
+    dom.playerModeLabel.textContent = "Show complete";
+    dom.playerName.textContent = recap.player;
+    dom.playerPrompt.textContent = `${recap.finalScore.toLocaleString()} IQ final. ${recap.correct} of ${recap.total} questions correct.`;
+    dom.teamModeText.textContent = game.mode === "couple"
+      ? `${members} completed the 420IQ lane as one team.`
+      : `${members} completed the 420IQ lane.`;
+
+    dom.playerChoices.innerHTML = `
+      <section class="player-complete-card" aria-label="Player completion recap">
+        <div class="player-complete-score">
+          <span>Final IQ</span>
+          <strong>${recap.finalScore.toLocaleString()}</strong>
+        </div>
+        <div class="player-complete-stats">
+          <div>
+            <span>Accuracy</span>
+            <strong>${recap.accuracy}%</strong>
+          </div>
+          <div>
+            <span>Correct</span>
+            <strong>${recap.correct}/${recap.total}</strong>
+          </div>
+          <div>
+            <span>Lifelines</span>
+            <strong>${recap.lifelines.trustedCircle || recap.lifelines.sourceSignal ? "Used" : "Unused"}</strong>
+          </div>
+        </div>
+      </section>
+    `;
     renderLifelineState();
   }
 
@@ -2115,18 +2822,54 @@
     }
 
     const audit = IQ.exportAudit(game);
-    const blob = new Blob([JSON.stringify(audit, null, 2)], {
-      type: "application/json"
-    });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `420iq-audit-${Date.now()}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    downloadJsonFile(audit, "420iq-audit");
     showToast("Audit JSON exported.");
+  }
+
+  function buildPublicExport() {
+    const publicQuestion = IQ.getPublicQuestion(game);
+    const reveal = game.reveal
+      ? {
+          correct: game.reveal.correct === true,
+          correctIndex: game.reveal.correctIndex,
+          correctChoice: game.reveal.correctChoice,
+          scoreDelta: game.reveal.scoring ? game.reveal.scoring.delta : 0,
+          knowledgeDrop: game.reveal.knowledgeDrop,
+          sourceCue: game.reveal.sourceCue,
+          correctAsOf: game.reveal.correctAsOf
+        }
+      : null;
+
+    return {
+      type: "420iq-public-export",
+      version: GAME_VERSION,
+      exportedAt: new Date().toISOString(),
+      phase: game.phase,
+      participant: game.participant.displayName,
+      score: game.scores[game.participant.id] || 0,
+      packChecksum: game.pack.checksum,
+      question: publicQuestion,
+      reveal,
+      results: (Array.isArray(game.results) ? game.results : []).map(result => ({
+        index: result.index,
+        domain: result.domain,
+        difficulty: result.difficulty,
+        correct: result.correct === true,
+        delta: result.delta,
+        scoreAfter: result.scoreAfter,
+        final: result.final === true
+      }))
+    };
+  }
+
+  function exportPublicRecap() {
+    if (!game) {
+      showToast("Create a show session before exporting.");
+      return;
+    }
+
+    downloadJsonFile(buildPublicExport(), "420iq-public-recap");
+    showToast("Public recap exported without private audit events.");
   }
 
   async function toggleFullscreen() {
@@ -2146,7 +2889,16 @@
     if (!file) return;
 
     try {
-      const parsed = JSON.parse(await file.text());
+      if (file.size > MAX_IMPORT_BYTES) {
+        throw new Error("Question JSON is too large. Keep imports under 512 KB.");
+      }
+
+      const sourceText = await file.text();
+      if (sourceText.length > MAX_IMPORT_BYTES) {
+        throw new Error("Question JSON is too large. Keep imports under 512 KB.");
+      }
+
+      const parsed = JSON.parse(sourceText);
       const imported = convertQuestionBank(parsed);
       questionBank = imported;
       localStorage.setItem(QUESTION_BANK_KEY, JSON.stringify(questionBank));
@@ -2163,6 +2915,109 @@
     }
   }
 
+  function boundedText(value, fieldName, maxLength, fallback = "") {
+    const text = String(value || fallback).trim();
+    if (!text) {
+      throw new Error(`${fieldName} is required.`);
+    }
+
+    if (text.length > maxLength) {
+      throw new Error(`${fieldName} must be ${maxLength} characters or fewer.`);
+    }
+
+    return text;
+  }
+
+  function boundedOptionalText(value, maxLength, fallback) {
+    const text = String(value || fallback || "").trim();
+    return text.length > maxLength ? text.slice(0, maxLength) : text;
+  }
+
+  function safeImportedQuestionId(value, index, importRunId) {
+    const fallback = `import-${importRunId}-${index + 1}`;
+    const raw = String(value || fallback).trim();
+    const safeId = raw.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+    return safeId || fallback;
+  }
+
+  function readCorrectIndex(item) {
+    if (Number.isInteger(item.correctIndex)) {
+      return item.correctIndex;
+    }
+
+    const numericAnswer = Number(item.correctAnswer);
+    return Number.isInteger(numericAnswer) ? numericAnswer : NaN;
+  }
+
+  function validateImportedQuestion(item, index, importRunId) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`Question ${index + 1} is not an object.`);
+    }
+
+    const rawChoices = Array.isArray(item.choices)
+      ? item.choices
+      : Array.isArray(item.answers)
+        ? item.answers
+        : [];
+    const choices = rawChoices.map((choice, choiceIndex) => (
+      boundedText(choice, `Question ${index + 1} choice ${choiceIndex + 1}`, MAX_CHOICE_LENGTH)
+    ));
+    const correctIndex = readCorrectIndex(item);
+
+    if (choices.length < 2 || choices.length > ANSWER_LETTERS.length) {
+      throw new Error(`Question ${index + 1} needs 2 to ${ANSWER_LETTERS.length} choices.`);
+    }
+
+    if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= choices.length) {
+      throw new Error(`Question ${index + 1} has an invalid correct answer.`);
+    }
+
+    const difficultyFallbacks = ["Spark", "Flame", "Inferno", "Spark", "Flame", "Wild 420"];
+    const difficulty = VALID_DIFFICULTIES.has(item.difficulty)
+      ? item.difficulty
+      : difficultyFallbacks[index % difficultyFallbacks.length];
+    const sensitivity = VALID_SENSITIVITY_TIERS.has(item.sensitivity)
+      ? item.sensitivity
+      : "Tier 2";
+    const importedSignals = Array.isArray(item.sourceSignals)
+      ? item.sourceSignals.slice(0, 3).map((signal, signalIndex) => (
+          boundedText(signal, `Question ${index + 1} source signal ${signalIndex + 1}`, MAX_BODY_COPY_LENGTH)
+        ))
+      : [];
+    const sourceSignals = importedSignals.length >= 3
+      ? importedSignals
+      : [
+          "Imported record needs a verified source.",
+          "Imported data is automatically Council-approved.",
+          "Rehearsal use makes a question broadcast safe."
+        ];
+    const verifiedSignalIndex = Number.isInteger(item.verifiedSignalIndex)
+      ? Math.max(0, Math.min(sourceSignals.length - 1, item.verifiedSignalIndex))
+      : 0;
+    const readTime = Number(item.readTime);
+
+    return {
+      id: safeImportedQuestionId(item.id, index, importRunId),
+      domain: boundedText(item.domain || item.category || "Imported", `Question ${index + 1} category`, 80),
+      difficulty,
+      stem: boundedText(item.stem || item.question, `Question ${index + 1} stem`, MAX_STEM_LENGTH),
+      choices,
+      correctIndex,
+      knowledgeDrop: boundedOptionalText(
+        item.knowledgeDrop || item.explanation,
+        MAX_BODY_COPY_LENGTH,
+        "Imported rehearsal question. Add a sourced Knowledge Drop before broadcast."
+      ),
+      sourceSignals,
+      verifiedSignalIndex,
+      sourceCue: boundedOptionalText(item.sourceCue, MAX_BODY_COPY_LENGTH, "Imported demo record. Verify before broadcast."),
+      correctAsOf: boundedOptionalText(item.correctAsOf, 80, "Imported rehearsal only"),
+      sensitivity,
+      readTime: Number.isFinite(readTime) ? Math.max(5, Math.min(45, Math.round(readTime))) : 10,
+      final: item.final === true
+    };
+  }
+
   function convertQuestionBank(candidate) {
     const source = Array.isArray(candidate)
       ? candidate
@@ -2176,44 +3031,12 @@
       throw new Error("Import needs an array, questions, or mainQuestions.");
     }
 
-    const difficulties = ["Spark", "Flame", "Inferno", "Spark", "Flame", "Wild 420"];
-    const converted = source.map((item, index) => {
-      const choices = Array.isArray(item.choices)
-        ? item.choices
-        : Array.isArray(item.answers)
-          ? item.answers
-          : [];
-      const stem = item.stem || item.question;
-      const correctIndex = Number.isInteger(item.correctIndex)
-        ? item.correctIndex
-        : item.correctAnswer;
+    if (source.length > MAX_IMPORTED_QUESTIONS) {
+      throw new Error(`Import supports up to ${MAX_IMPORTED_QUESTIONS} questions at once.`);
+    }
 
-      if (!stem || choices.length < 2 || !Number.isInteger(correctIndex)) {
-        throw new Error(`Question ${index + 1} is not compatible.`);
-      }
-
-      return {
-        id: `import-${Date.now()}-${index + 1}`,
-        domain: String(item.domain || item.category || "Imported"),
-        difficulty: item.difficulty || difficulties[index % difficulties.length],
-        stem: String(stem),
-        choices: choices.map(String),
-        correctIndex,
-        knowledgeDrop: String(item.knowledgeDrop || item.explanation || "Imported rehearsal question. Add a sourced Knowledge Drop before broadcast."),
-        sourceSignals: Array.isArray(item.sourceSignals) && item.sourceSignals.length >= 3
-          ? item.sourceSignals.slice(0, 3).map(String)
-          : [
-              "Imported record needs a verified source.",
-              "Imported data is automatically Council-approved.",
-              "Rehearsal use makes a question broadcast safe."
-            ],
-        verifiedSignalIndex: Number.isInteger(item.verifiedSignalIndex) ? item.verifiedSignalIndex : 0,
-        sourceCue: String(item.sourceCue || "Imported demo record. Verify before broadcast."),
-        correctAsOf: String(item.correctAsOf || "Imported rehearsal only"),
-        sensitivity: String(item.sensitivity || "Tier 2"),
-        readTime: Number(item.readTime) || 10
-      };
-    });
+    const importRunId = Date.now();
+    const converted = source.map((item, index) => validateImportedQuestion(item, index, importRunId));
 
     return converted.length >= 2
       ? converted
@@ -2274,6 +3097,12 @@
   });
 
   dom.startGameButton.addEventListener("click", createShowSession);
+  if (dom.createRemoteSessionButton) {
+    dom.createRemoteSessionButton.addEventListener("click", createRemoteSession);
+  }
+  dom.copySessionButtons.forEach(button => {
+    button.addEventListener("click", () => copySessionLink(button.dataset.copyTarget));
+  });
   dom.questionImportInput.addEventListener("change", importQuestionBank);
   dom.soundToggle.addEventListener("click", async () => {
     if (soundEnabled && !isAudioReadyForPlayback()) {
@@ -2313,6 +3142,9 @@
   }
   if (dom.exportPackButton) {
     dom.exportPackButton.addEventListener("click", exportPack);
+  }
+  if (dom.exportPublicButton) {
+    dom.exportPublicButton.addEventListener("click", exportPublicRecap);
   }
   dom.fullscreenButton.addEventListener("click", toggleFullscreen);
 
@@ -2402,6 +3234,7 @@
       selectedChoiceIndex = index;
       render();
       playCue("answerSelect");
+      submitPlayerAnswer(index);
     }
 
     if (event.key === "Enter" && !dom.lockButton.disabled) {
@@ -2433,6 +3266,8 @@
   syncSoundButton();
   installMobileAudioUnlock();
   initCrossWindowSync();
+  connectServerSync();
+  loadRemoteSessionInfo();
   initAgeGate();
   window.setInterval(updateTimerDisplays, 250);
   // Heal storage on load: if the session was recovered from the mirror key

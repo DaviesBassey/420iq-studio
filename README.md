@@ -3,7 +3,7 @@
 Local-first host controller for the 420IQ quiz show. Finite-state show flow,
 Confidence Lock, Source Signal / Trusted Circle lifelines, question timer,
 16:9 stage + 9:16 vertical preview, and the 420 Decision final — all running
-in the browser with no backend and no network calls at runtime.
+in the browser, with an optional local session server for phone/player sync.
 
 Packaged as an installable, offline-first **Progressive Web App (PWA)**.
 
@@ -15,6 +15,7 @@ Packaged as an installable, offline-first **Progressive Web App (PWA)**.
 | [`styles.css`](styles.css) | Premium-mobile theme |
 | [`engine.js`](engine.js) | Pure game engine — state machine, scoring, pack balancing, timer (no DOM) |
 | [`app.js`](app.js) | UI glue — rendering, controls, WebAudio SFX, access routing, persistence |
+| [`server.js`](server.js) | Dependency-free local server — static hosting + role-scoped host/player/stage session sync |
 | [`manifest.webmanifest`](manifest.webmanifest) | PWA manifest (name, icons, theme, standalone display) |
 | [`service-worker.js`](service-worker.js) | Precache-and-serve shell for offline launch + clean updates |
 | [`icons/`](icons/) | App icons (192/512 any + maskable, Apple touch icon) |
@@ -26,7 +27,8 @@ Packaged as an installable, offline-first **Progressive Web App (PWA)**.
 ## Access URLs
 
 Access separation is enforced in `app.js` (read from the URL, independent of
-the PWA layer):
+the PWA layer). When launched through `npm start`, the server also issues
+separate role tokens for host, player and stage links:
 
 - **Host / admin:** `/?access=admin#host` — full controller (this is also the
   installed app's `start_url`).
@@ -39,17 +41,39 @@ the PWA layer):
   Stage window** button; press **F** (or double-click) to fullscreen it on the
   capture monitor.
 
-## Two-monitor broadcast (cross-window sync)
+## Local phone / player sync
 
-The host console and the Stage display can run in separate windows on separate
-monitors. The Stage window is a **receive-only mirror**: it renders the live
+Run `npm start`, open the host URL, then use **Create phone session** in the
+host side panel. The server returns three scoped URLs:
+
+- **Admin host** — contains the host token and can publish authoritative state.
+- **Player only** — contains only the player token; it can submit an answer
+  selection but cannot publish game state or open host controls.
+- **Stage display** — contains only the stage token; it receives state and stays
+  silent.
+
+The host panel includes copy buttons for all three links and a locally generated
+QR code for the player-only link. The QR code is drawn in the browser; the
+player token is not sent to a third-party QR service.
+
+Player/stage streams receive a public game snapshot: answer keys, verified
+source indexes, raw events and Trusted Circle contacts are stripped before the
+server sends state outside the host role.
+
+This is a local pilot sync layer, not a public account system. For a deployed
+viewer/login product, keep the same role model but add persisted sessions,
+HTTPS, real authentication, rate limits and server-side authorization.
+
+## Two-monitor broadcast (same-machine sync)
+
+The host console and the Stage display can also run in separate windows on the
+same machine. The Stage window is a **receive-only mirror**: it renders the live
 show but never persists or controls it. State propagates from host → Stage in
 real time via `BroadcastChannel` (same-origin), with the `storage` event as a
 fallback. The host is always authoritative; a freshly opened Stage window
 requests current state on load. The countdown timer runs locally in each window
 from the shared start/end timestamps, so it stays smooth without per-tick
-messages. (Cross-*device* mirroring — e.g. a player's phone — is out of scope
-here; it needs the deferred audience backend.)
+messages.
 
 ## Sound effects (SFX)
 
@@ -132,6 +156,18 @@ should not live only in a browser:
 Import/export share the `{ "type": "420iq-pack", "questions": [...] }` shape, so
 a pack round-trips losslessly.
 
+Imports are schema-bounded before replacing the bank: max 512 KB, max 80
+questions, 2-6 choices per question, valid correct-answer index, bounded text
+fields, known difficulty values and known sensitivity tiers.
+
+## Exports
+
+- **EX — private audit.** Full internal audit trail for production control.
+- **BK — private backup.** Full game + question bank recovery file.
+- **Export pack JSON.** Clean question-bank package for version control.
+- **Export public recap.** Redacted share package from the Audit surface. It
+  omits raw events, trusted-circle contacts and private session data.
+
 ## Run locally
 
 Service workers require `http://localhost` or HTTPS — opening `index.html` over
@@ -143,14 +179,24 @@ npm start
 # then open http://localhost:8787/?access=admin#host
 ```
 
+Static-only mode is still available when you do not need phone sync:
+
+```sh
+npm run static
+```
+
 ## Deploy
 
-Copy this directory to any static host that serves over **HTTPS** (GitHub
-Pages, Netlify, Cloudflare Pages, S3+CloudFront, nginx). No build step. Ensure
-`manifest.webmanifest` is served as `application/manifest+json` (most hosts do
-this automatically). On first visit the service worker precaches the shell;
-subsequent launches work offline and the host can "Install / Add to Home
-Screen" on desktop, Android and iOS.
+For a static/offline install, copy this directory to any static host that serves
+over **HTTPS** (GitHub Pages, Netlify, Cloudflare Pages, S3+CloudFront, nginx).
+No build step. Ensure `manifest.webmanifest` is served as
+`application/manifest+json` (most hosts do this automatically). On first visit
+the service worker precaches the shell; subsequent launches work offline and
+the host can "Install / Add to Home Screen" on desktop, Android and iOS.
+
+For cross-device player sync, deploy `server.js` behind HTTPS instead of using
+static hosting alone, then add persistent auth before letting public viewers
+join.
 
 ## Releasing a new version
 

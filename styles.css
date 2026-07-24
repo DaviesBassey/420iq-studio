@@ -30,6 +30,7 @@
   --space-control-x: 16px;
   --space-control-tight-y: 10px;
   --space-control-tight-x: 14px;
+  --status-content-gap: clamp(16px, 1.4vw, 22px);
   --shadow: 0 28px 80px rgba(0, 0, 0, 0.46);
   --shadow-soft: 0 18px 45px rgba(4, 5, 15, 0.38);
   --radius-xl: 28px;
@@ -693,10 +694,12 @@ main {
 
 .section-kicker,
 .panel-label {
+  display: block;
   color: var(--amber-2);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.12em;
+  line-height: 1.15;
   text-transform: uppercase;
 }
 
@@ -908,6 +911,93 @@ h3 {
   padding: 8px 10px;
   font-size: 12px;
   font-weight: 800;
+}
+
+.remote-session-panel {
+  gap: 14px;
+}
+
+.remote-session-panel,
+.session-link-grid {
+  display: grid;
+}
+
+.session-link-grid {
+  gap: 10px;
+}
+
+.session-qr-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid rgba(65, 255, 242, 0.22);
+  border-radius: var(--radius-sm);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(65, 255, 242, 0.14), transparent 54%),
+    rgba(0, 0, 0, 0.2);
+}
+
+.session-qr-card canvas {
+  width: 156px;
+  height: 156px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
+}
+
+.session-qr-card span {
+  color: #c6fff9;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-link-field {
+  display: grid;
+  gap: 7px;
+}
+
+.session-link-field span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.session-link-field input,
+.copy-session-link {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(67, 214, 201, 0.26);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.22);
+  color: #effffc;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.copy-session-link {
+  width: auto;
+  padding: 0 12px;
+  color: #10111b;
+  background: linear-gradient(180deg, #83fff7, #41fff2);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .run-header {
@@ -1730,6 +1820,11 @@ h3 {
   gap: 14px;
 }
 
+.public-export-button {
+  width: 100%;
+  margin-top: 14px;
+}
+
 .payload-empty {
   margin: 0;
   color: var(--muted);
@@ -2495,16 +2590,77 @@ body::after {
   overflow-wrap: anywhere;
 }
 
+.player-complete-card {
+  display: grid;
+  gap: clamp(16px, 1.6vw, 22px);
+  padding: clamp(22px, 2.4vw, 34px);
+  border: 1px solid rgba(65, 255, 242, 0.28);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 255, 0.22), rgba(228, 76, 255, 0.18)),
+    rgba(0, 0, 0, 0.24);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.26);
+}
+
+.player-complete-score {
+  display: grid;
+  gap: 6px;
+}
+
+.player-complete-score span,
+.player-complete-stats span {
+  color: #7efff7;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.player-complete-score strong {
+  color: #ffffff;
+  font-size: clamp(54px, 7vw, 86px);
+  font-weight: 950;
+  line-height: 0.94;
+}
+
+.player-complete-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.player-complete-stats div {
+  display: grid;
+  gap: 6px;
+  min-height: 74px;
+  align-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 12px 14px;
+}
+
+.player-complete-stats strong {
+  color: #fffaff;
+  font-size: clamp(18px, 1.7vw, 24px);
+  font-weight: 950;
+  line-height: 1.1;
+}
+
 [data-theme="premium-mobile"] .player-side {
   gap: var(--space-grid);
 }
 
 [data-theme="premium-mobile"] .player-side .status-panel {
+  display: grid;
+  align-content: start;
+  gap: var(--status-content-gap);
   padding: clamp(24px, 2.2vw, 36px);
 }
 
 [data-theme="premium-mobile"] .player-side .status-panel p {
-  margin: 14px 0 0;
+  margin: 0;
   color: #e3e7f8;
   font-size: clamp(17px, 1.15vw, 20px);
   line-height: 1.55;
@@ -2524,7 +2680,7 @@ body::after {
 
 [data-theme="premium-mobile"] .lifeline-state {
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 [data-theme="premium-mobile"] .state-pill {
@@ -2882,5 +3038,9 @@ body::after {
   [data-theme="premium-mobile"] .answer-choice,
   [data-theme="premium-mobile"] .player-choice {
     grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .player-complete-stats {
+    grid-template-columns: 1fr;
   }
 }

@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="420IQ">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=420iq19">
+  <link rel="stylesheet" href="./styles.css?v=420iq23">
 </head>
 <body data-theme="premium-mobile" data-access="admin">
   <script>
@@ -269,6 +269,41 @@
               </div>
               <div class="audience-lock">Audience PWA: locked</div>
             </section>
+
+            <section class="status-panel remote-session-panel" id="remoteSessionPanel">
+              <div>
+                <div class="section-kicker">Phone session</div>
+                <p id="remoteSessionStatus">Create a server-backed session to mirror the show to a phone.</p>
+              </div>
+              <button class="secondary-button" type="button" id="createRemoteSessionButton">Create phone session</button>
+              <div class="session-qr-card">
+                <canvas id="playerJoinQr" width="196" height="196" aria-label="Player-only QR code"></canvas>
+                <span>Scan player-only link</span>
+              </div>
+              <div class="session-link-grid">
+                <label class="session-link-field">
+                  <span>Admin host</span>
+                  <span class="session-link-row">
+                    <input id="hostSessionLink" type="text" readonly value="">
+                    <button class="copy-session-link" type="button" data-copy-target="hostSessionLink">Copy</button>
+                  </span>
+                </label>
+                <label class="session-link-field">
+                  <span>Player only</span>
+                  <span class="session-link-row">
+                    <input id="playerSessionLink" type="text" readonly value="">
+                    <button class="copy-session-link" type="button" data-copy-target="playerSessionLink">Copy</button>
+                  </span>
+                </label>
+                <label class="session-link-field">
+                  <span>Stage display</span>
+                  <span class="session-link-row">
+                    <input id="stageSessionLink" type="text" readonly value="">
+                    <button class="copy-session-link" type="button" data-copy-target="stageSessionLink">Copy</button>
+                  </span>
+                </label>
+              </div>
+            </section>
           </aside>
         </div>
       </section>
@@ -411,6 +446,7 @@
             <div class="public-payload-card" id="publicPayloadCard">
               <p class="payload-empty">Create a show session to preview the safe public display.</p>
             </div>
+            <button class="secondary-button public-export-button" type="button" id="exportPublicButton">Export public recap</button>
           </aside>
         </div>
       </section>
@@ -437,8 +473,8 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="./engine.js?v=420iq19"></script>
-  <script src="./app.js?v=420iq19"></script>
+  <script src="./engine.js?v=420iq23"></script>
+  <script src="./app.js?v=420iq23"></script>
   <script>
     (function register420IQServiceWorker() {
       if (!("serviceWorker" in navigator)) {
