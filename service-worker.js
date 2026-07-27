@@ -13,9 +13,9 @@
  * Bump the `?v=` token on engine.js / app.js in index.html AND here together
  * when their contents change, so the precache stores the fresh bytes.
  */
-const CACHE_VERSION = "v17";
+const CACHE_VERSION = "v18";
 const CACHE_NAME = `420iq-shell-${CACHE_VERSION}`;
-const ASSET_VERSION = "420iq24";
+const ASSET_VERSION = "420iq25";
 
 // Core shell: if any of these fail to cache, offline launch is impossible, so
 // `addAll` fails loudly (atomic) and the old worker stays in control.

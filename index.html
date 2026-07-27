@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="420IQ">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=420iq24">
+  <link rel="stylesheet" href="./styles.css?v=420iq25">
 </head>
 <body data-theme="premium-mobile" data-access="admin">
   <script>
@@ -166,6 +166,13 @@
                   <strong id="hostTimerValue">0:30</strong>
                 </div>
               </div>
+            </div>
+
+            <div class="category-picker" id="categoryPicker" hidden>
+              <div class="section-kicker">Choose a category to open the show</div>
+              <p class="category-picker-help">Nothing is loaded yet — pick where to start, and that question loads for the intro.</p>
+              <div class="category-grid" id="categoryGrid"></div>
+              <button class="secondary-button" type="button" id="balancedStartButton">Use balanced pack order instead</button>
             </div>
 
             <div class="question-command">
@@ -464,8 +471,8 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="./engine.js?v=420iq24"></script>
-  <script src="./app.js?v=420iq24"></script>
+  <script src="./engine.js?v=420iq25"></script>
+  <script src="./app.js?v=420iq25"></script>
   <script>
     (function register420IQServiceWorker() {
       if (!("serviceWorker" in navigator)) {

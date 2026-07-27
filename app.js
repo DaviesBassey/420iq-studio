@@ -385,6 +385,9 @@
     setupPanel: document.getElementById("setupPanel"),
     runPanel: document.getElementById("runPanel"),
     recapPanel: document.getElementById("recapPanel"),
+    categoryPicker: document.getElementById("categoryPicker"),
+    categoryGrid: document.getElementById("categoryGrid"),
+    balancedStartButton: document.getElementById("balancedStartButton"),
     modeButtons: Array.from(document.querySelectorAll(".mode-button")),
     soloFields: Array.from(document.querySelectorAll(".solo-field")),
     coupleFields: Array.from(document.querySelectorAll(".couple-field")),
@@ -488,6 +491,7 @@
   let questionBank = loadQuestionBank();
   let game = loadSavedGame();
   let history = [];
+  let awaitingCategoryStart = false;
   let currentMode = game ? game.mode : "solo";
   let selectedChoiceIndex = null;
   let selectedConfidence = "Curious";
@@ -1669,11 +1673,13 @@
     selectedRisk = "Rise";
     selectedSignalIndex = null;
     history = [];
+    // Neutral start: no question is presented until the host picks a category.
+    awaitingCategoryStart = true;
 
     saveGame();
     render();
     playCue("ui");
-    showToast("420IQ show session created.");
+    showToast("Session created. Choose a category to open the show.");
   }
 
   function resetDemo() {
@@ -1681,6 +1687,7 @@
     localStorage.removeItem(STORAGE_BACKUP_KEY);
     game = null;
     history = [];
+    awaitingCategoryStart = false;
     selectedChoiceIndex = null;
     selectedSignalIndex = null;
     render();
@@ -1923,6 +1930,7 @@
 
       currentMode = game.mode === "couple" ? "couple" : "solo";
       history = [];
+      awaitingCategoryStart = false;
       selectedChoiceIndex = null;
       selectedSignalIndex = null;
       selectedConfidence = "Curious";
@@ -1948,6 +1956,7 @@
     }
 
     renderHost();
+    renderCategoryStart();
     renderStage();
     renderPlayer();
     renderPlayerJoinPanel();
@@ -2081,6 +2090,65 @@
       <div class="stage-recap-accuracy">${recap.correct} / ${recap.total} correct · ${recap.accuracy}%</div>
       <div class="stage-recap-chips">${chips}</div>
     `;
+  }
+
+  function renderCategoryStart() {
+    const active = Boolean(game && awaitingCategoryStart);
+
+    if (dom.runPanel) {
+      dom.runPanel.dataset.phase = active ? "category" : "";
+    }
+    if (dom.categoryPicker) {
+      dom.categoryPicker.hidden = !active;
+    }
+
+    if (!active || !dom.categoryGrid) {
+      return;
+    }
+
+    dom.categoryGrid.innerHTML = "";
+    FINAL_CATEGORY_OPTIONS.forEach(category => {
+      const available = chooseQuestionForCategory(category) >= 0;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "category-option";
+      button.disabled = !available;
+      button.textContent = category;
+      button.addEventListener("click", () => chooseStartCategory(category));
+      dom.categoryGrid.appendChild(button);
+    });
+  }
+
+  function chooseStartCategory(category) {
+    if (!game) {
+      return;
+    }
+
+    const categoryQuestionIndex = chooseQuestionForCategory(category);
+    if (categoryQuestionIndex < 0) {
+      showToast(`No regular ${category} question is available in this pack.`);
+      return;
+    }
+
+    game.activeQuestionIndex = categoryQuestionIndex;
+    resetQuestionAttemptState();
+    awaitingCategoryStart = false;
+    saveGame();
+    render();
+    playCue("ui");
+    showToast(`${category} loaded. Open with the intro.`);
+  }
+
+  function startWithBalancedOrder() {
+    if (!game) {
+      return;
+    }
+
+    awaitingCategoryStart = false;
+    saveGame();
+    render();
+    playCue("ui");
+    showToast("Balanced pack order — first question loaded.");
   }
 
   function renderHost() {
@@ -2758,6 +2826,9 @@
   }
 
   dom.startGameButton.addEventListener("click", createShowSession);
+  if (dom.balancedStartButton) {
+    dom.balancedStartButton.addEventListener("click", startWithBalancedOrder);
+  }
   dom.questionImportInput.addEventListener("change", importQuestionBank);
   dom.soundToggle.addEventListener("click", async () => {
     if (soundEnabled && !isAudioReadyForPlayback()) {

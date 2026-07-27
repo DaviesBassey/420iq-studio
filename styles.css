@@ -2710,6 +2710,61 @@ body::after {
   transform: translate(-50%, 0);
 }
 
+/* Category-first neutral start: hide the question surface until a category is chosen */
+.run-panel[data-phase="category"] .question-command,
+.run-panel[data-phase="category"] .confidence-panel,
+.run-panel[data-phase="category"] .lifeline-panel,
+.run-panel[data-phase="category"] .final-panel,
+.run-panel[data-phase="category"] .control-deck {
+  display: none;
+}
+
+.category-picker[hidden] {
+  display: none;
+}
+
+.category-picker {
+  display: grid;
+  gap: 16px;
+}
+
+.category-picker-help {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.category-option {
+  min-height: 66px;
+  padding: 14px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--white-soft, #f4f6ff);
+  font-size: clamp(15px, 1.2vw, 18px);
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.category-option:hover:not(:disabled) {
+  border-color: rgba(111, 155, 255, 0.7);
+  background: rgba(111, 155, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.category-option:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 @keyframes lockPulse {
   from {
     box-shadow:

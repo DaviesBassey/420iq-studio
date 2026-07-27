@@ -246,8 +246,8 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq24"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq24"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq25"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq25"><\/script>/);
 });
 
 test("host-only undo reverts the last step via a compensating engine event", () => {
@@ -321,6 +321,22 @@ test("end-of-show recap renders on COMPLETE for host and stage", () => {
   assert.match(css, /\.recap-block\.accent-amber/);
   assert.match(css, /\.recap-row\.is-correct/);
   assert.match(css, /\.stage-recap\s*\{[\s\S]*position:\s*absolute/);
+});
+
+test("category-first neutral start gates the show behind a category picker", () => {
+  const html = readProjectFile("index.html");
+  const app = readProjectFile("app.js");
+  const css = readProjectFile("styles.css");
+
+  assert.match(html, /id="categoryPicker"/);
+  assert.match(html, /id="categoryGrid"/);
+  assert.match(html, /id="balancedStartButton"/);
+  assert.match(app, /let awaitingCategoryStart = false/);
+  assert.match(app, /awaitingCategoryStart = true/);
+  assert.match(app, /function renderCategoryStart\(\)/);
+  assert.match(app, /function chooseStartCategory\(/);
+  assert.match(app, /dom\.runPanel\.dataset\.phase = active \? "category" : ""/);
+  assert.match(css, /\.run-panel\[data-phase="category"\] \.control-deck/);
 });
 
 test("difficulty and category render as semantic color-coded chips", () => {
