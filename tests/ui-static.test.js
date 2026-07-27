@@ -168,7 +168,7 @@ test("420 Decision category selection routes the active regular question", () =>
   const app = readProjectFile("app.js");
 
   assert.match(app, /function selectedCategoryForRender\(\)/);
-  assert.match(app, /currentQuestion && !currentQuestion\.final \? currentQuestion\.domain : dom\.finalCategorySelect\.value/);
+  assert.match(app, /dom\.finalCategorySelect\.value \|\| NO_CATEGORY_SELECTED/);
   assert.match(app, /function chooseQuestionForCategory\(category\)/);
   assert.match(app, /question\.domain === category && !question\.final/);
   assert.match(app, /function resetQuestionAttemptState\(\)/);
@@ -183,8 +183,11 @@ test("420 Decision controls expose clear category and IQ target structure", () =
   const app = readProjectFile("app.js");
   const css = readProjectFile("styles.css");
 
-  assert.match(html, /The host chooses a category and IQ target before the cinematic final question\./);
-  assert.match(app, /FINAL: "The 420 Decision is active\. Select the IQ target and open the final question\."/);
+  assert.match(html, /Choose a category and IQ target before opening the final question\./);
+  assert.match(app, /FINAL: "The 420 Decision is active\. Choose the IQ target and category, then open the final question\."/);
+  assert.match(app, /const NO_CATEGORY_SELECTED = ""/);
+  assert.match(html, /<option value="">Choose category<\/option>/);
+  assert.match(app, /if \(category === NO_CATEGORY_SELECTED\)/);
   assert.match(html, /<div class="final-field">[\s\S]*<span class="control-label" id="finalCategoryLabel">Final category<\/span>[\s\S]*<select id="finalCategorySelect"/);
   assert.match(html, /<div class="final-field final-risk-field">[\s\S]*<span class="control-label" id="riskBandLabel">IQ target<\/span>/);
   assert.match(html, /class="segmented compact final-risk-buttons"/);
@@ -196,6 +199,46 @@ test("420 Decision controls expose clear category and IQ target structure", () =
   assert.match(css, /\.final-risk-buttons \.segment strong\s*\{[\s\S]*font-size:\s*clamp\(17px,\s*1\.5vw,\s*22px\)/);
 });
 
+test("host side panel restores a static scan-to-join player card", () => {
+  const html = readProjectFile("index.html");
+  const app = readProjectFile("app.js");
+  const css = readProjectFile("styles.css");
+
+  assert.match(html, /id="joinPanel"/);
+  assert.match(html, /Scan QR to join/);
+  assert.match(html, /id="playerJoinQr"/);
+  assert.match(html, /id="playerJoinLink"/);
+  assert.match(html, /data-copy-target="playerJoinLink"/);
+  assert.match(app, /playerJoinQr: document\.getElementById\("playerJoinQr"\)/);
+  assert.match(app, /function buildAccessUrl\(access, hash\)/);
+  assert.match(app, /function renderPlayerJoinPanel\(\)/);
+  assert.match(app, /function renderPlayerJoinQr\(playerUrl\)/);
+  assert.match(app, /function createQrCodeMatrix\(value\)/);
+  assert.match(app, /function reedSolomonRemainder\(data, divisor\)/);
+  assert.match(app, /dom\.copyLinkButtons\.forEach/);
+  assert.doesNotMatch(app, /fetch\("\.\/api\/sessions"/);
+  assert.doesNotMatch(app, /new EventSource\(/);
+  assert.match(css, /\.join-panel/);
+  assert.match(css, /\.join-qr-card/);
+  assert.match(css, /\.join-link-row/);
+});
+
+test("player QR avoids localhost links that fail on phones", () => {
+  const html = readProjectFile("index.html");
+  const app = readProjectFile("app.js");
+  const css = readProjectFile("styles.css");
+
+  assert.match(html, /id="joinHostInput"/);
+  assert.match(html, /id="applyJoinHostButton"/);
+  assert.match(html, /id="joinHelp"/);
+  assert.match(app, /const JOIN_HOST_KEY = "420iqJoinHostV1"/);
+  assert.match(app, /function isLoopbackHost\(hostname\)/);
+  assert.match(app, /function buildPhoneReachableUrl\(access, hash\)/);
+  assert.match(app, /drawQrPlaceholder\(canvas, "LAN URL"\)/);
+  assert.match(app, /localStorage\.setItem\(JOIN_HOST_KEY, normalisedHost\)/);
+  assert.match(css, /\.join-help/);
+});
+
 test("html carries an early player access bootstrap and current cache token", () => {
   const html = readProjectFile("index.html");
 
@@ -203,8 +246,8 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq22"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq22"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq24"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq24"><\/script>/);
 });
 
 test("host-only undo reverts the last step via a compensating engine event", () => {
@@ -244,7 +287,7 @@ test("stage display mode and cross-window sync power the two-monitor broadcast",
   assert.match(html, /id="popoutStageButton"/);
   assert.match(html, /document\.body\.dataset\.access = "stage"/);
   assert.match(app, /function popoutStage\(\)[\s\S]*window\.open\(/);
-  assert.match(app, /\?access=stage#stage/);
+  assert.match(app, /buildAccessUrl\("stage", "#stage"\)\.href/);
 
   // The Stage window is a silent, receive-only mirror.
   assert.match(app, /if \(accessMode === "stage"\)[\s\S]*soundEnabled = false/);

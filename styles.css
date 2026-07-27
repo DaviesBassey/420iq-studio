@@ -921,6 +921,91 @@ h3 {
   font-weight: 800;
 }
 
+.join-panel {
+  gap: 14px;
+}
+
+.join-help {
+  margin: 10px 0 0;
+  color: #c6fff9;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.join-qr-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid rgba(65, 255, 242, 0.22);
+  border-radius: var(--radius-sm);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(65, 255, 242, 0.14), transparent 54%),
+    rgba(0, 0, 0, 0.2);
+}
+
+.join-qr-card canvas {
+  width: 156px;
+  height: 156px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
+}
+
+.join-qr-card span {
+  color: #c6fff9;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.join-link-field {
+  display: grid;
+  gap: 7px;
+}
+
+.join-link-field > span:first-child {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.join-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.join-link-row input,
+.copy-link-button {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(67, 214, 201, 0.26);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.22);
+  color: #effffc;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.copy-link-button {
+  width: auto;
+  padding: 0 12px;
+  color: #10111b;
+  background: linear-gradient(180deg, #83fff7, #41fff2);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .run-header {
   display: flex;
   align-items: flex-start;

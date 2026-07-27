@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="420IQ">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=420iq22">
+  <link rel="stylesheet" href="./styles.css?v=420iq24">
 </head>
 <body data-theme="premium-mobile" data-access="admin">
   <script>
@@ -194,12 +194,13 @@
             <div class="final-panel" id="finalPanel" hidden>
               <div>
                 <span class="panel-label">The 420 Decision</span>
-                <p>The host chooses a category and IQ target before the cinematic final question.</p>
+                <p>Choose a category and IQ target before opening the final question.</p>
               </div>
               <div class="final-controls">
                 <div class="final-field">
                   <span class="control-label" id="finalCategoryLabel">Final category</span>
                   <select id="finalCategorySelect" aria-labelledby="finalCategoryLabel">
+                    <option value="">Choose category</option>
                     <option>Science & Plant Literacy</option>
                     <option>Sports & Performance</option>
                     <option>Music & Pop Culture</option>
@@ -268,6 +269,32 @@
                 <p>Audience login, QR join, leaderboard, badges and downloads are designed as Phase 3 surfaces. This YouTube pilot keeps audience mode locked.</p>
               </div>
               <div class="audience-lock">Audience PWA: locked</div>
+            </section>
+
+            <section class="status-panel join-panel" id="joinPanel">
+              <div>
+                <div class="section-kicker">Player join</div>
+                <p>Scan QR to join the player display. It opens the static player view; live phone sync stays out of this build.</p>
+                <p class="join-help" id="joinHelp">Use a phone-reachable address for scanning.</p>
+              </div>
+              <div class="join-qr-card">
+                <canvas id="playerJoinQr" width="196" height="196" aria-label="Player-only QR code"></canvas>
+                <span>Scan QR to join</span>
+              </div>
+              <label class="join-link-field">
+                <span>Phone address</span>
+                <span class="join-link-row">
+                  <input id="joinHostInput" type="text" autocomplete="off" spellcheck="false" placeholder="192.168.1.23:8788" aria-label="Phone-reachable host address">
+                  <button class="copy-link-button" id="applyJoinHostButton" type="button">Use</button>
+                </span>
+              </label>
+              <label class="join-link-field">
+                <span>Player link</span>
+                <span class="join-link-row">
+                  <input id="playerJoinLink" type="text" readonly value="" aria-label="Player join link">
+                  <button class="copy-link-button" type="button" data-copy-target="playerJoinLink">Copy</button>
+                </span>
+              </label>
             </section>
           </aside>
         </div>
@@ -437,8 +464,8 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="./engine.js?v=420iq22"></script>
-  <script src="./app.js?v=420iq22"></script>
+  <script src="./engine.js?v=420iq24"></script>
+  <script src="./app.js?v=420iq24"></script>
   <script>
     (function register420IQServiceWorker() {
       if (!("serviceWorker" in navigator)) {

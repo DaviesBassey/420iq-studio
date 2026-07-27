@@ -13,9 +13,9 @@
  * Bump the `?v=` token on engine.js / app.js in index.html AND here together
  * when their contents change, so the precache stores the fresh bytes.
  */
-const CACHE_VERSION = "v15";
+const CACHE_VERSION = "v17";
 const CACHE_NAME = `420iq-shell-${CACHE_VERSION}`;
-const ASSET_VERSION = "420iq22";
+const ASSET_VERSION = "420iq24";
 
 // Core shell: if any of these fail to cache, offline launch is impossible, so
 // `addAll` fails loudly (atomic) and the old worker stays in control.
@@ -37,6 +37,14 @@ const OPTIONAL_URLS = [
   "./icons/maskable-512.png",
   "./icons/apple-touch-icon.png"
 ];
+
+function requestMustMatchSearch(url) {
+  return (
+    url.pathname.endsWith("/app.js") ||
+    url.pathname.endsWith("/engine.js") ||
+    url.pathname.endsWith("/styles.css")
+  );
+}
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -94,10 +102,12 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+  const exactMatchOnly = requestMustMatchSearch(url);
+
   event.respondWith(
     caches
       .match(request)
-      .then(cached => cached || caches.match(request, { ignoreSearch: true }))
+      .then(cached => cached || (exactMatchOnly ? null : caches.match(request, { ignoreSearch: true })))
       .then(cached => {
         if (cached) {
           return cached;

@@ -87,6 +87,17 @@ test("service worker asset version matches the cache token in index.html", () =>
   assert.match(html, new RegExp(`styles\\.css\\?v=${assetVersion}`));
 });
 
+test("service worker does not ignore search params for versioned JS and CSS", () => {
+  const sw = readProjectFile("service-worker.js");
+
+  assert.match(sw, /function requestMustMatchSearch\(url\)/);
+  assert.match(sw, /url\.pathname\.endsWith\("\/app\.js"\)/);
+  assert.match(sw, /url\.pathname\.endsWith\("\/engine\.js"\)/);
+  assert.match(sw, /url\.pathname\.endsWith\("\/styles\.css"\)/);
+  assert.match(sw, /const exactMatchOnly = requestMustMatchSearch\(url\)/);
+  assert.match(sw, /exactMatchOnly\s*\?\s*null\s*:\s*caches\.match\(request, \{ ignoreSearch: true \}\)/);
+});
+
 test("service worker cleans up stale shell caches on activate and controls clients", () => {
   const sw = readProjectFile("service-worker.js");
 

@@ -7,6 +7,7 @@
   const STORAGE_BACKUP_KEY = "420iqPilotGameV2Backup";
   const QUESTION_BANK_KEY = "420iqPilotQuestionBankV2";
   const SOUND_KEY = "420iqPilotSoundEnabled";
+  const JOIN_HOST_KEY = "420iqJoinHostV1";
   const BACKUP_FILE_TYPE = "420iq-backup";
   const HISTORY_LIMIT = 40;
   const AGE_ACK_KEY = "420iqAgeAcknowledgedV1";
@@ -14,6 +15,7 @@
   const ACCESS_MODES = new Set(["admin", "player", "stage"]);
   const VALID_TABS = new Set(["host", "stage", "player", "pack", "audit"]);
   const SYNC_CHANNEL_NAME = "420iq-sync";
+  const NO_CATEGORY_SELECTED = "";
   const FINAL_CATEGORY_OPTIONS = [
     "Science & Plant Literacy",
     "Sports & Performance",
@@ -372,7 +374,7 @@
     KNOWLEDGE_DROP: "Knowledge Drop state. Host explains the verified learning beat.",
     SCORE_COMMITTED: "Score committed. Advance, trigger 420 Decision or complete.",
     NEXT_QUESTION: "Advancing to the next question.",
-    FINAL: "The 420 Decision is active. Select the IQ target and open the final question.",
+    FINAL: "The 420 Decision is active. Choose the IQ target and category, then open the final question.",
     COMPLETE: "Show complete. Export the audit package."
   };
 
@@ -419,6 +421,12 @@
     finalCategorySelect: document.getElementById("finalCategorySelect"),
     cueText: document.getElementById("cueText"),
     sideRing: document.getElementById("sideRing"),
+    playerJoinQr: document.getElementById("playerJoinQr"),
+    playerJoinLink: document.getElementById("playerJoinLink"),
+    joinHostInput: document.getElementById("joinHostInput"),
+    applyJoinHostButton: document.getElementById("applyJoinHostButton"),
+    joinHelp: document.getElementById("joinHelp"),
+    copyLinkButtons: Array.from(document.querySelectorAll("[data-copy-target]")),
     introButton: document.getElementById("introButton"),
     readyButton: document.getElementById("readyButton"),
     liveButton: document.getElementById("liveButton"),
@@ -494,6 +502,7 @@
   let lastTickSecond = null;
   let timeoutCuePlayed = false;
   let syncChannel = null;
+  let joinHostOverride = readJoinHostOverride();
   const accessMode = readAccessMode();
 
   if (accessMode === "stage") {
@@ -1067,8 +1076,464 @@
     showToast(`Exported ${questionBank.length} questions. Commit the file to version control.`);
   }
 
+  function buildAccessUrl(access, hash) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("access", access);
+    url.searchParams.delete("role");
+    url.hash = hash;
+    return url;
+  }
+
+  function isLoopbackHost(hostname) {
+    const host = String(hostname || "").toLowerCase();
+    return (
+      host === "localhost" ||
+      host === "0.0.0.0" ||
+      host === "::1" ||
+      host === "[::1]" ||
+      host.startsWith("127.")
+    );
+  }
+
+  function normaliseJoinHost(value) {
+    const rawValue = String(value || "").trim();
+    if (!rawValue) {
+      return "";
+    }
+
+    try {
+      const parsed = new URL(/^https?:\/\//i.test(rawValue) ? rawValue : `http://${rawValue}`);
+      return parsed.host;
+    } catch (error) {
+      return "";
+    }
+  }
+
+  function readJoinHostOverride() {
+    return normaliseJoinHost(localStorage.getItem(JOIN_HOST_KEY));
+  }
+
+  function buildPhoneReachableUrl(access, hash) {
+    const url = buildAccessUrl(access, hash);
+    const normalisedHost = normaliseJoinHost(joinHostOverride);
+
+    if (normalisedHost) {
+      url.host = normalisedHost;
+      return url;
+    }
+
+    return isLoopbackHost(url.hostname) ? null : url;
+  }
+
+  function renderPlayerJoinPanel() {
+    const playerUrl = buildPhoneReachableUrl("player", "#player");
+
+    if (dom.joinHostInput) {
+      dom.joinHostInput.value = normaliseJoinHost(joinHostOverride);
+    }
+
+    if (dom.joinHelp) {
+      dom.joinHelp.textContent = playerUrl
+        ? "QR uses the address shown below."
+        : "localhost only works on this computer. Enter this computer's LAN IP and port, then tap Use.";
+    }
+
+    if (!dom.playerJoinLink) {
+      renderPlayerJoinQr(playerUrl ? playerUrl.href : "");
+      return;
+    }
+
+    dom.playerJoinLink.value = playerUrl ? playerUrl.href : "";
+    renderPlayerJoinQr(playerUrl ? playerUrl.href : "");
+  }
+
+  function applyJoinHostOverride() {
+    const normalisedHost = normaliseJoinHost(dom.joinHostInput ? dom.joinHostInput.value : "");
+
+    if (!normalisedHost) {
+      joinHostOverride = "";
+      localStorage.removeItem(JOIN_HOST_KEY);
+      renderPlayerJoinPanel();
+      showToast("Enter an IP address and port the phone can reach.");
+      return;
+    }
+
+    joinHostOverride = normalisedHost;
+    localStorage.setItem(JOIN_HOST_KEY, normalisedHost);
+    renderPlayerJoinPanel();
+    showToast("Player QR updated.");
+  }
+
+  async function copyLinkValue(targetId) {
+    const input = document.getElementById(targetId);
+    if (!input || !input.value) {
+      showToast("No link to copy yet.");
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(input.value);
+      } else {
+        input.select();
+        document.execCommand("copy");
+        input.blur();
+      }
+      showToast("Player link copied.");
+    } catch (error) {
+      input.select();
+      showToast("Link selected. Copy it from the field.");
+    }
+  }
+
+  function renderPlayerJoinQr(playerUrl) {
+    const canvas = dom.playerJoinQr;
+    if (!canvas) {
+      return;
+    }
+
+    try {
+      if (!playerUrl) {
+        drawQrPlaceholder(canvas, "LAN URL");
+        return;
+      }
+
+      const matrix = createQrCodeMatrix(playerUrl);
+      drawQrMatrix(canvas, matrix);
+    } catch (error) {
+      drawQrPlaceholder(canvas, "Copy link");
+    }
+  }
+
+  function drawQrPlaceholder(canvas, label) {
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+
+    const size = canvas.width;
+    context.fillStyle = "#10111b";
+    context.fillRect(0, 0, size, size);
+    context.strokeStyle = "rgba(65, 255, 242, 0.5)";
+    context.lineWidth = 2;
+    context.strokeRect(9, 9, size - 18, size - 18);
+    context.fillStyle = "#c6fff9";
+    context.font = "800 15px sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(label, size / 2, size / 2);
+  }
+
+  function drawQrMatrix(canvas, matrix) {
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+
+    const moduleCount = matrix.length;
+    const quietZone = 4;
+    const cellSize = Math.floor(canvas.width / (moduleCount + quietZone * 2));
+    const qrSize = cellSize * (moduleCount + quietZone * 2);
+    const offset = Math.floor((canvas.width - qrSize) / 2);
+
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#10111b";
+
+    matrix.forEach((row, y) => {
+      row.forEach((dark, x) => {
+        if (!dark) {
+          return;
+        }
+
+        context.fillRect(
+          offset + (x + quietZone) * cellSize,
+          offset + (y + quietZone) * cellSize,
+          cellSize,
+          cellSize
+        );
+      });
+    });
+  }
+
+  function utf8Bytes(value) {
+    if ("TextEncoder" in window) {
+      return Array.from(new TextEncoder().encode(value));
+    }
+
+    return Array.from(unescape(encodeURIComponent(value))).map(character => character.charCodeAt(0));
+  }
+
+  function createQrCodeMatrix(value) {
+    const version = 10;
+    const size = version * 4 + 17;
+    const dataCodewordCount = 274;
+    const maxByteLength = 271;
+    const bytes = utf8Bytes(String(value));
+
+    if (bytes.length > maxByteLength) {
+      throw new Error("Player link is too long for the local QR generator.");
+    }
+
+    const modules = Array.from({ length: size }, () => Array(size).fill(false));
+    const functions = Array.from({ length: size }, () => Array(size).fill(false));
+
+    function setModule(x, y, dark, isFunction = false) {
+      if (x < 0 || y < 0 || x >= size || y >= size) {
+        return;
+      }
+
+      modules[y][x] = dark === true;
+      if (isFunction) {
+        functions[y][x] = true;
+      }
+    }
+
+    function setFunctionModule(x, y, dark) {
+      setModule(x, y, dark, true);
+    }
+
+    function drawFinderPattern(centerX, centerY) {
+      for (let y = -4; y <= 4; y += 1) {
+        for (let x = -4; x <= 4; x += 1) {
+          const distance = Math.max(Math.abs(x), Math.abs(y));
+          const dark = distance !== 2 && distance <= 3;
+          setFunctionModule(centerX + x, centerY + y, dark);
+        }
+      }
+    }
+
+    function drawAlignmentPattern(centerX, centerY) {
+      for (let y = -2; y <= 2; y += 1) {
+        for (let x = -2; x <= 2; x += 1) {
+          const distance = Math.max(Math.abs(x), Math.abs(y));
+          setFunctionModule(centerX + x, centerY + y, distance !== 1);
+        }
+      }
+    }
+
+    function drawFunctionPatterns(maskPattern) {
+      drawFinderPattern(3, 3);
+      drawFinderPattern(size - 4, 3);
+      drawFinderPattern(3, size - 4);
+
+      [6, 28, 50].forEach(y => {
+        [6, 28, 50].forEach(x => {
+          if (!functions[y][x]) {
+            drawAlignmentPattern(x, y);
+          }
+        });
+      });
+
+      for (let i = 8; i < size - 8; i += 1) {
+        const dark = i % 2 === 0;
+        setFunctionModule(6, i, dark);
+        setFunctionModule(i, 6, dark);
+      }
+
+      drawFormatBits(maskPattern);
+      drawVersionBits(version);
+    }
+
+    function getBit(valueToRead, bitIndex) {
+      return ((valueToRead >>> bitIndex) & 1) !== 0;
+    }
+
+    function drawFormatBits(maskPattern) {
+      const errorCorrectionBits = 1;
+      const data = (errorCorrectionBits << 3) | maskPattern;
+      let remainder = data;
+      for (let i = 0; i < 10; i += 1) {
+        remainder = (remainder << 1) ^ (((remainder >>> 9) & 1) * 0x537);
+      }
+      const bits = ((data << 10) | remainder) ^ 0x5412;
+
+      for (let i = 0; i <= 5; i += 1) setFunctionModule(8, i, getBit(bits, i));
+      setFunctionModule(8, 7, getBit(bits, 6));
+      setFunctionModule(8, 8, getBit(bits, 7));
+      setFunctionModule(7, 8, getBit(bits, 8));
+      for (let i = 9; i < 15; i += 1) setFunctionModule(14 - i, 8, getBit(bits, i));
+
+      for (let i = 0; i < 8; i += 1) setFunctionModule(size - 1 - i, 8, getBit(bits, i));
+      for (let i = 8; i < 15; i += 1) setFunctionModule(8, size - 15 + i, getBit(bits, i));
+      setFunctionModule(8, size - 8, true);
+    }
+
+    function drawVersionBits(versionNumber) {
+      let remainder = versionNumber;
+      for (let i = 0; i < 12; i += 1) {
+        remainder = (remainder << 1) ^ (((remainder >>> 11) & 1) * 0x1f25);
+      }
+      const bits = (versionNumber << 12) | remainder;
+
+      for (let i = 0; i < 18; i += 1) {
+        const bit = getBit(bits, i);
+        const a = size - 11 + (i % 3);
+        const b = Math.floor(i / 3);
+        setFunctionModule(a, b, bit);
+        setFunctionModule(b, a, bit);
+      }
+    }
+
+    const maskPattern = 2;
+    drawFunctionPatterns(maskPattern);
+    const codewords = createQrCodewords(bytes, dataCodewordCount);
+    let bitIndex = 0;
+
+    for (let right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) {
+        right -= 1;
+      }
+
+      for (let vertical = 0; vertical < size; vertical += 1) {
+        const upward = ((size - 1 - right) & 2) === 0;
+        const y = upward ? size - 1 - vertical : vertical;
+
+        for (let column = 0; column < 2; column += 1) {
+          const x = right - column;
+          if (functions[y][x]) {
+            continue;
+          }
+
+          const dark = bitIndex < codewords.length * 8
+            ? getBit(codewords[bitIndex >>> 3], 7 - (bitIndex & 7))
+            : false;
+          const masked = dark !== (x % 3 === 0);
+          setModule(x, y, masked, false);
+          bitIndex += 1;
+        }
+      }
+    }
+
+    drawFormatBits(maskPattern);
+    return modules;
+  }
+
+  function createQrCodewords(dataBytes, dataCodewordCount) {
+    const bits = [];
+    const appendBits = (value, length) => {
+      for (let i = length - 1; i >= 0; i -= 1) {
+        bits.push((value >>> i) & 1);
+      }
+    };
+
+    appendBits(0x4, 4);
+    appendBits(dataBytes.length, 16);
+    dataBytes.forEach(byte => appendBits(byte, 8));
+
+    const capacityBits = dataCodewordCount * 8;
+    for (let i = 0; i < 4 && bits.length < capacityBits; i += 1) {
+      bits.push(0);
+    }
+    while (bits.length % 8 !== 0) {
+      bits.push(0);
+    }
+
+    const dataCodewords = [];
+    for (let i = 0; i < bits.length; i += 8) {
+      let codeword = 0;
+      for (let j = 0; j < 8; j += 1) {
+        codeword = (codeword << 1) | bits[i + j];
+      }
+      dataCodewords.push(codeword);
+    }
+
+    for (let padByte = 0xec; dataCodewords.length < dataCodewordCount; padByte ^= 0xfd) {
+      dataCodewords.push(padByte);
+    }
+
+    return appendQrErrorCorrection(dataCodewords);
+  }
+
+  function appendQrErrorCorrection(dataCodewords) {
+    const blockCount = 4;
+    const shortBlockCount = 2;
+    const shortDataCount = 68;
+    const longDataCount = 69;
+    const errorCorrectionCodewords = 18;
+    const divisor = reedSolomonDivisor(errorCorrectionCodewords);
+    const blocks = [];
+    let offset = 0;
+
+    for (let blockIndex = 0; blockIndex < blockCount; blockIndex += 1) {
+      const dataCount = blockIndex < shortBlockCount ? shortDataCount : longDataCount;
+      const data = dataCodewords.slice(offset, offset + dataCount);
+      offset += dataCount;
+      blocks.push({
+        data,
+        errorCorrection: reedSolomonRemainder(data, divisor)
+      });
+    }
+
+    const result = [];
+    for (let i = 0; i < longDataCount; i += 1) {
+      blocks.forEach(block => {
+        if (i < block.data.length) {
+          result.push(block.data[i]);
+        }
+      });
+    }
+    for (let i = 0; i < errorCorrectionCodewords; i += 1) {
+      blocks.forEach(block => result.push(block.errorCorrection[i]));
+    }
+
+    return result;
+  }
+
+  function reedSolomonDivisor(degree) {
+    const result = Array(degree).fill(0);
+    result[degree - 1] = 1;
+    let root = 1;
+
+    for (let i = 0; i < degree; i += 1) {
+      for (let j = 0; j < result.length; j += 1) {
+        result[j] = gfMultiply(result[j], root);
+        if (j + 1 < result.length) {
+          result[j] ^= result[j + 1];
+        }
+      }
+      root = gfMultiply(root, 0x02);
+    }
+
+    return result;
+  }
+
+  function reedSolomonRemainder(data, divisor) {
+    const result = Array(divisor.length).fill(0);
+
+    data.forEach(byte => {
+      const factor = byte ^ result.shift();
+      result.push(0);
+      divisor.forEach((coefficient, index) => {
+        result[index] ^= gfMultiply(coefficient, factor);
+      });
+    });
+
+    return result;
+  }
+
+  function gfMultiply(left, right) {
+    let x = left;
+    let y = right;
+    let result = 0;
+
+    for (let i = 0; i < 8; i += 1) {
+      if ((y & 1) !== 0) {
+        result ^= x;
+      }
+      const carry = (x & 0x80) !== 0;
+      x = (x << 1) & 0xff;
+      if (carry) {
+        x ^= 0x1d;
+      }
+      y >>>= 1;
+    }
+
+    return result;
+  }
+
   function popoutStage() {
-    const stageUrl = `${window.location.pathname}?access=stage#stage`;
+    const stageUrl = buildAccessUrl("stage", "#stage").href;
     const stageWindow = window.open(
       stageUrl,
       "420iq-stage",
@@ -1245,32 +1710,29 @@
   }
 
   function selectedCategoryForRender() {
-    if (!game) return dom.finalCategorySelect.value;
+    if (!game) return dom.finalCategorySelect.value || NO_CATEGORY_SELECTED;
     if (game.finalDecision && FINAL_CATEGORY_OPTIONS.includes(game.finalDecision.category)) {
       return game.finalDecision.category;
     }
-    if (shouldShowFinalDecisionPanel()) {
-      return dom.finalCategorySelect.value;
-    }
-
-    const currentQuestion = IQ.currentQuestion(game);
-    return currentQuestion && !currentQuestion.final ? currentQuestion.domain : dom.finalCategorySelect.value;
+    return dom.finalCategorySelect.value || NO_CATEGORY_SELECTED;
   }
 
   function syncFinalCategoryOptions(preferredCategory = null) {
     if (!game) return;
 
-    const selectedCategory = preferredCategory && FINAL_CATEGORY_OPTIONS.includes(preferredCategory)
+    const selectedCategory = preferredCategory !== null
       ? preferredCategory
       : game.finalDecision && FINAL_CATEGORY_OPTIONS.includes(game.finalDecision.category)
       ? game.finalDecision.category
-      : dom.finalCategorySelect.value;
+      : dom.finalCategorySelect.value || NO_CATEGORY_SELECTED;
     const finalCategory = FINAL_CATEGORY_OPTIONS.includes(selectedCategory)
       ? selectedCategory
-      : FINAL_CATEGORY_OPTIONS[0];
+      : NO_CATEGORY_SELECTED;
 
-    dom.finalCategorySelect.innerHTML = FINAL_CATEGORY_OPTIONS
+    dom.finalCategorySelect.innerHTML = [`<option value="${NO_CATEGORY_SELECTED}">Choose category</option>`]
+      .concat(FINAL_CATEGORY_OPTIONS
       .map(category => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`)
+      )
       .join("");
     dom.finalCategorySelect.value = finalCategory;
   }
@@ -1313,6 +1775,11 @@
   }
 
   function applySelectedCategory(category) {
+    if (category === NO_CATEGORY_SELECTED) {
+      syncFinalCategoryOptions(NO_CATEGORY_SELECTED);
+      return;
+    }
+
     if (!game) {
       syncFinalCategoryOptions(category);
       return;
@@ -1483,6 +1950,7 @@
     renderHost();
     renderStage();
     renderPlayer();
+    renderPlayerJoinPanel();
     renderPack();
     renderAudit();
     renderRecap();
@@ -2273,6 +2741,22 @@
     applySelectedCategory(dom.finalCategorySelect.value);
   });
 
+  dom.copyLinkButtons.forEach(button => {
+    button.addEventListener("click", () => copyLinkValue(button.dataset.copyTarget));
+  });
+
+  if (dom.applyJoinHostButton) {
+    dom.applyJoinHostButton.addEventListener("click", applyJoinHostOverride);
+  }
+  if (dom.joinHostInput) {
+    dom.joinHostInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyJoinHostOverride();
+      }
+    });
+  }
+
   dom.startGameButton.addEventListener("click", createShowSession);
   dom.questionImportInput.addEventListener("change", importQuestionBank);
   dom.soundToggle.addEventListener("click", async () => {
@@ -2374,9 +2858,16 @@
   }));
 
   dom.decisionButton.addEventListener("click", () => perform(() => {
+    const finalCategory = selectedCategoryForRender();
+    if (finalCategory === NO_CATEGORY_SELECTED) {
+      syncFinalCategoryOptions(NO_CATEGORY_SELECTED);
+      dom.finalCategorySelect.focus();
+      throw new Error("Choose a final category before the 420 Decision.");
+    }
+
     game = IQ.startFinalDecision(game, {
       riskBand: selectedRisk,
-      category: dom.finalCategorySelect.value
+      category: finalCategory
     }, "producer");
   }));
 
