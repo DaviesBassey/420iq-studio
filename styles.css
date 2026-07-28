@@ -2980,10 +2980,17 @@ body::after {
 
   [data-theme="premium-mobile"] .surface-tabs {
     max-width: 100%;
-    overflow-x: visible;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  [data-theme="premium-mobile"] .surface-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   [data-theme="premium-mobile"] .tab-button {
+    flex: 0 0 auto;
     min-width: 56px;
     padding: 9px 10px;
     font-size: 12px;
