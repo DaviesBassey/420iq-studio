@@ -246,8 +246,8 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq25"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq25"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq26"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq26"><\/script>/);
 });
 
 test("host-only undo reverts the last step via a compensating engine event", () => {

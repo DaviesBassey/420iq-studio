@@ -467,6 +467,7 @@
     verticalCue: document.getElementById("verticalCue"),
     playerModeLabel: document.getElementById("playerModeLabel"),
     playerName: document.getElementById("playerName"),
+    playerQuestion: document.getElementById("playerQuestion"),
     playerPrompt: document.getElementById("playerPrompt"),
     playerChoices: document.getElementById("playerChoices"),
     playerTimer: document.getElementById("playerTimer"),
@@ -2496,6 +2497,7 @@
     if (!game) {
       dom.playerModeLabel.textContent = "Contestant display";
       dom.playerName.textContent = "Contestant";
+      dom.playerQuestion.textContent = "";
       dom.playerPrompt.textContent = "Waiting for the host.";
       dom.playerChoices.innerHTML = "";
       dom.teamModeText.textContent = "Single player mode is ready.";
@@ -2508,6 +2510,7 @@
 
     dom.playerModeLabel.textContent = game.mode === "couple" ? "Couple contestant display" : "Single contestant display";
     dom.playerName.textContent = game.participant.displayName;
+    dom.playerQuestion.textContent = publicQuestion ? publicQuestion.stem : "";
     dom.playerPrompt.textContent = game.phase === "QUESTION_LIVE"
       ? "Choose one answer and let the host lock it."
       : PHASE_CUES[game.phase];

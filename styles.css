@@ -1698,6 +1698,18 @@ h3 {
   font-size: 46px;
 }
 
+.player-main p.player-question {
+  margin-top: 14px;
+  color: var(--white-soft);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+.player-main p.player-question:empty {
+  display: none;
+}
+
 .player-answer-grid {
   margin-top: 22px;
 }
@@ -2574,6 +2586,14 @@ body::after {
   font-size: clamp(17px, 1.35vw, 21px);
   line-height: 1.48;
   text-wrap: pretty;
+}
+
+[data-theme="premium-mobile"] .player-main p.player-question {
+  margin: 10px 0 6px;
+  color: var(--white-soft);
+  font-size: clamp(24px, 2.1vw, 32px);
+  font-weight: 600;
+  line-height: 1.24;
 }
 
 [data-theme="premium-mobile"] .player-answer-grid {
