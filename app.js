@@ -582,8 +582,10 @@
     // should not lose the show if the backup key survived.
     for (const key of [STORAGE_KEY, STORAGE_BACKUP_KEY]) {
       try {
-        const saved = JSON.parse(localStorage.getItem(key));
+        const serialized = localStorage.getItem(key);
+        const saved = JSON.parse(serialized);
         if (saved && saved.version === GAME_VERSION) {
+          rehealSavedGame(serialized);
           return saved;
         }
       } catch (error) {
@@ -592,6 +594,23 @@
     }
 
     return null;
+  }
+
+  function rehealSavedGame(serialized) {
+    // Recovery restores dual-key redundancy right away: if one key was torn, the
+    // show would otherwise run on the single surviving copy until the next save,
+    // and a second failure in that window loses everything. The equality guards
+    // keep the normal (both keys already healthy) path free of extra writes.
+    try {
+      if (localStorage.getItem(STORAGE_KEY) !== serialized) {
+        localStorage.setItem(STORAGE_KEY, serialized);
+      }
+      if (localStorage.getItem(STORAGE_BACKUP_KEY) !== serialized) {
+        localStorage.setItem(STORAGE_BACKUP_KEY, serialized);
+      }
+    } catch (error) {
+      console.warn("Could not re-heal 420IQ storage after recovery.", error);
+    }
   }
 
   function saveGame() {

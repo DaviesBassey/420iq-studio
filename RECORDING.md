@@ -9,6 +9,10 @@ yourself; the point is to exercise the whole flow.
 
 - **Two displays.** Primary = your Host console. Secondary = the Stage (what
   gets captured).
+- **Free disk space.** Confirm the machine has real headroom (a few GB) before
+  recording. The crash-safe resume/backup writes to `localStorage`, and a full
+  disk makes those writes fail — the app warns ("Storage is full…") but you lose
+  the safety net. A full disk also stalls OBS's own recording. Check first.
 - **Serve the app** over http (service workers need it):
   ```sh
   npm start          # serves on http://localhost:8787

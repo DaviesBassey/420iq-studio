@@ -246,8 +246,8 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq27"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq27"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq28"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq28"><\/script>/);
 });
 
 test("host-only undo reverts the last step via a compensating engine event", () => {
@@ -274,6 +274,17 @@ test("crash-safe backup mirrors storage and supports a downloadable restore", ()
   assert.match(app, /function downloadBackup\(\)/);
   assert.match(app, /function restoreBackup\(/);
   assert.match(app, /bundle\.type !== BACKUP_FILE_TYPE/);
+});
+
+test("recovery re-heals both storage keys so redundancy is restored immediately", () => {
+  const app = readProjectFile("app.js");
+
+  // A successful load re-writes both keys, so a mirror-recovery does not leave
+  // the show running on a single surviving copy until the next save.
+  assert.match(app, /function rehealSavedGame\(serialized\)/);
+  assert.match(app, /rehealSavedGame\(serialized\)/);
+  assert.match(app, /if \(localStorage\.getItem\(STORAGE_KEY\) !== serialized\)/);
+  assert.match(app, /if \(localStorage\.getItem\(STORAGE_BACKUP_KEY\) !== serialized\)/);
 });
 
 test("stage display mode and cross-window sync power the two-monitor broadcast", () => {
