@@ -45,6 +45,12 @@ yourself; the point is to exercise the whole flow.
 Create the session, then walk the flow and tick each item:
 
 - [ ] Intro → Ready → **Go live** (timer starts, ticking audio plays)
+- [ ] **On the first live question, grab a full-frame still of the Stage**
+      (OBS: right-click the preview → *Screenshot (Source)*, or your OS
+      screenshot). Save it — this is the artifact that drives the type-scale
+      pass. Note the **capture resolution** on it (720p vs 1080p): the Stage
+      text sizes with the window width, so the numbers only mean something
+      paired with the resolution they were read at.
 - [ ] Select an answer, **Source Signal** lifeline, resolve it
 - [ ] Next question → **Trusted Circle** lifeline, resolve it
 - [ ] **Lock** an answer → **Reveal** (correct/wrong SFX) → **Knowledge Drop**
@@ -59,7 +65,12 @@ Create the session, then walk the flow and tick each item:
 
 - **Legibility on camera:** are the Stage question, answers, chips, and recap
   numbers big enough at your capture resolution? (This is the most likely thing
-  to tweak next.)
+  to tweak next.) Specifically: the question currently caps at 36px, which reads
+  small on a 1080p stream — the saved still tells us how much to raise it.
+- **Layout collisions on the Stage:** on a full-width live question, does the
+  **score ("N IQ") stay clear of the question text**, and does the question
+  clear the center knowledge ring? (Both collide at smaller window sizes; the
+  still confirms whether the broadcast size is clean.)
 - **Audio balance:** cues vs mic vs any room noise.
 - **Pacing:** does any state feel like it needs an extra beat / hold?
 - **Fumbles:** anywhere you reached for a control that wasn't where you expected.
