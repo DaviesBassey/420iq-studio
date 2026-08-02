@@ -39,6 +39,20 @@ function postJson(port, urlPath, body) {
   });
 }
 
+function postReset(port) {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { host: "127.0.0.1", port, path: "/sync/reset", method: "POST" },
+      res => {
+        res.on("data", () => {});
+        res.on("end", () => resolve(res.statusCode));
+      }
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
 function getPlain(port, urlPath) {
   return new Promise((resolve, reject) => {
     const req = http.get({ host: "127.0.0.1", port, path: urlPath }, res => {
@@ -199,6 +213,46 @@ test("client wires network sync: host publishes, displays subscribe", () => {
   // without manual IP entry when the host was opened via localhost.
   assert.match(app, /info\.host && !joinHostOverride && isLoopbackHost\(location\.hostname\)/);
   assert.match(app, /joinHostOverride = info\.host;/);
+
+  // Reset path: host clears -> displays return to the waiting screen.
+  assert.match(app, /function broadcastReset/);
+  assert.match(app, /"\/sync\/reset"/);
+  assert.match(app, /function clearDisplayGame/);
+  assert.match(app, /message\.type === "reset" && isDisplayAccess\(\)/);
+  assert.match(app, /broadcastReset\(\);/);
+});
+
+test("reset clears cached state and notifies connected displays", async () => {
+  const server = createRelayServer({ root: projectRoot });
+  const port = await listen(server);
+
+  await postJson(port, "/sync/publish", { type: "state", game: { version: "v", phase: "QUESTION_LIVE" } });
+  const sub = await subscribe(port);
+  assert.equal(JSON.parse(await sub.next()).type, "state"); // cached state on connect
+
+  assert.equal(await postReset(port), 204);
+  assert.deepEqual(JSON.parse(await sub.next()), { type: "reset" }); // live fan-out
+
+  sub.req.destroy();
+  await close(server);
+});
+
+test("after reset a fresh subscriber receives no stale state", async () => {
+  const server = createRelayServer({ root: projectRoot });
+  const port = await listen(server);
+
+  await postJson(port, "/sync/publish", { type: "state", game: { version: "v", phase: "REVEAL" } });
+  await postReset(port);
+
+  const sub = await subscribe(port);
+  const outcome = await Promise.race([
+    sub.next().then(value => ({ got: value })),
+    new Promise(resolve => setTimeout(() => resolve({ got: null }), 400))
+  ]);
+  assert.equal(outcome.got, null); // nothing cached to replay
+
+  sub.req.destroy();
+  await close(server);
 });
 
 test("health reports the machine's LAN host for the join QR", async () => {

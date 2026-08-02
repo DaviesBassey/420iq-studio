@@ -962,6 +962,17 @@
     publishStateToRelay();
   }
 
+  function broadcastReset() {
+    // Host-only: the show was cleared. Tell every display (same-browser and
+    // networked) to return to the waiting screen, since broadcastState() sends
+    // nothing once game is null.
+    if (isDisplayAccess()) {
+      return;
+    }
+    postSync({ type: "reset" });
+    publishResetToRelay();
+  }
+
   function queuePendingCue(type) {
     if (!soundEnabled || accessMode === "stage") {
       return;
@@ -1041,6 +1052,19 @@
     playCue("answerSelect");
   }
 
+  function clearDisplayGame() {
+    // Display-only: the host cleared the show — return to the waiting screen.
+    if (!isDisplayAccess()) {
+      return;
+    }
+    game = null;
+    selectedChoiceIndex = null;
+    selectedSignalIndex = null;
+    lastTickSecond = null;
+    timeoutCuePlayed = false;
+    render();
+  }
+
   function handleSyncMessage(message) {
     if (!message) {
       return;
@@ -1049,6 +1073,11 @@
     // A display window just opened and asked the host to push current state.
     if (message.type === "request" && !isDisplayAccess()) {
       broadcastState();
+      return;
+    }
+
+    if (message.type === "reset" && isDisplayAccess()) {
+      clearDisplayGame();
       return;
     }
 
@@ -1077,7 +1106,12 @@
     // host writes on every state change.
     window.addEventListener("storage", event => {
       if (isDisplayAccess() && (event.key === STORAGE_KEY || event.key === STORAGE_BACKUP_KEY)) {
-        applyIncomingGame(loadSavedGame());
+        const loaded = loadSavedGame();
+        if (loaded) {
+          applyIncomingGame(loaded);
+        } else {
+          clearDisplayGame();
+        }
       }
     });
 
@@ -1128,6 +1162,22 @@
         keepalive: true
       }).catch(() => {
         /* relay unreachable; local selection still shows on this device */
+      });
+    } catch (error) {
+      /* fetch unsupported or blocked; ignore */
+    }
+  }
+
+  function publishResetToRelay() {
+    // Host-only: clear the relay's cached state so a phone reconnecting after a
+    // reset gets the waiting screen, not the stale last question.
+    if (!networkSyncEnabled || isDisplayAccess()) {
+      return;
+    }
+
+    try {
+      fetch("/sync/reset", { method: "POST", keepalive: true }).catch(() => {
+        /* relay unreachable; same-browser reset still applied */
       });
     } catch (error) {
       /* fetch unsupported or blocked; ignore */
@@ -1875,6 +1925,7 @@
     awaitingCategoryStart = false;
     selectedChoiceIndex = null;
     selectedSignalIndex = null;
+    broadcastReset();
     render();
     setActiveTab("host");
     showToast("Local show session reset.");
@@ -2878,6 +2929,7 @@
       localStorage.removeItem(STORAGE_BACKUP_KEY);
       game = null;
       history = [];
+      broadcastReset();
       render();
       showToast(`${imported.length} questions imported for rehearsal.`);
     } catch (error) {

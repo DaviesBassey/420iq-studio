@@ -151,6 +151,16 @@ function createRelayServer(options = {}) {
       return;
     }
 
+    // --- reset: the host cleared the show; drop cached state and tell displays ---
+    if (pathname === "/sync/reset" && req.method === "POST") {
+      lastState = null;
+      lastAnswer = null;
+      fanOut(JSON.stringify({ type: "reset" }));
+      res.writeHead(204, { "access-control-allow-origin": "*" });
+      res.end();
+      return;
+    }
+
     // --- health / feature-detection for the client ---
     if (pathname === "/sync/health" && req.method === "GET") {
       // Hand the client the machine's LAN address (LAN IP + the port it was
