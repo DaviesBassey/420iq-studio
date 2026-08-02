@@ -1943,6 +1943,15 @@
     return Boolean(question && question.final);
   }
 
+  function questionRevealedToDisplays() {
+    // Keep the question stem and answer choices off the contestant and broadcast
+    // displays until the host sends the question live. Pre-live phases (and the
+    // 420 Decision selection) show a standby hold instead of leaking the loaded
+    // question during category selection or the intro.
+    if (!game) return false;
+    return !["PRE_SHOW", "INTRO", "QUESTION_READY", "FINAL"].includes(game.phase);
+  }
+
   function shouldShowFinalDecisionPanel() {
     if (!game) return false;
     return (
@@ -2641,18 +2650,24 @@
     const publicQuestion = game ? IQ.getPublicQuestion(game) : null;
     const progressDegrees = progressToDegrees();
 
+    const revealed = questionRevealedToDisplays();
+
     dom.stagePhase.textContent = game ? game.phase : "PRE_SHOW";
-    dom.stageDifficulty.innerHTML = publicQuestion ? difficultyChip(publicQuestion.difficulty) : "420IQ";
+    dom.stageDifficulty.innerHTML = revealed && publicQuestion ? difficultyChip(publicQuestion.difficulty) : "420IQ";
     dom.stagePlayer.textContent = game ? game.participant.displayName : "Contestant";
     dom.stageScore.textContent = `${score.toLocaleString()} IQ`;
-    dom.stageQuestion.textContent = publicQuestion ? publicQuestion.stem : "Create a session to load the first question.";
+    dom.stageQuestion.textContent = revealed && publicQuestion
+      ? publicQuestion.stem
+      : game
+        ? "Standby — the host is preparing the question."
+        : "Create a session to load the first question.";
     dom.stageCue.textContent = game ? PHASE_CUES[game.phase] : "YouTube master display";
     dom.stageChecksum.textContent = game ? game.pack.checksum : "pack pending";
     dom.stageRing.style.setProperty("--ring-progress", `${progressDegrees}deg`);
     dom.stageRing.classList.toggle("locked", game && game.phase === "ANSWER_LOCKED");
-    renderVerticalPreview(publicQuestion, score, progressDegrees);
+    renderVerticalPreview(revealed ? publicQuestion : null, score, progressDegrees);
 
-    if (publicQuestion) {
+    if (revealed && publicQuestion) {
       renderStaticChoices(dom.stageAnswers, publicQuestion, "stage-answer");
     } else {
       dom.stageAnswers.innerHTML = "";
@@ -2742,11 +2757,12 @@
     }
 
     const publicQuestion = IQ.getPublicQuestion(game);
+    const revealed = questionRevealedToDisplays();
     const members = game.participant.members.map(member => member.name).join(" and ");
 
     dom.playerModeLabel.textContent = game.mode === "couple" ? "Couple contestant display" : "Single contestant display";
     dom.playerName.textContent = game.participant.displayName;
-    dom.playerQuestion.textContent = publicQuestion ? publicQuestion.stem : "";
+    dom.playerQuestion.textContent = revealed && publicQuestion ? publicQuestion.stem : "";
     dom.playerPrompt.textContent = game.phase === "QUESTION_LIVE"
       ? "Choose one answer and let the host lock it."
       : PHASE_CUES[game.phase];
@@ -2754,7 +2770,11 @@
       ? `${members} play as one team. Their answer is locked as a shared decision.`
       : `${members} plays solo against the 420IQ lane.`;
 
-    renderChoiceButtons(dom.playerChoices, publicQuestion, "player-choice");
+    if (revealed && publicQuestion) {
+      renderChoiceButtons(dom.playerChoices, publicQuestion, "player-choice");
+    } else {
+      dom.playerChoices.innerHTML = "";
+    }
     renderLifelineState();
   }
 

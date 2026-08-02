@@ -283,8 +283,23 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq36"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq36"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq37"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq37"><\/script>/);
+});
+
+test("contestant and stage hide the question until it goes live", () => {
+  const app = readProjectFile("app.js");
+
+  // A single gate keeps pre-live phases (and the 420 Decision) from leaking the
+  // loaded question during category selection or the intro.
+  assert.match(app, /function questionRevealedToDisplays/);
+  assert.match(app, /!\["PRE_SHOW", "INTRO", "QUESTION_READY", "FINAL"\]\.includes\(game\.phase\)/);
+  // Player and stage both gate the stem on the reveal flag.
+  assert.match(app, /dom\.playerQuestion\.textContent = revealed && publicQuestion \? publicQuestion\.stem : "";/);
+  assert.match(app, /dom\.stageQuestion\.textContent = revealed && publicQuestion/);
+  // Choices are only rendered once revealed.
+  assert.match(app, /if \(revealed && publicQuestion\) \{\s*renderChoiceButtons\(dom\.playerChoices/);
+  assert.match(app, /if \(revealed && publicQuestion\) \{\s*renderStaticChoices\(dom\.stageAnswers/);
 });
 
 test("host-only undo reverts the last step via a compensating engine event", () => {
@@ -394,7 +409,7 @@ test("difficulty and category render as semantic color-coded chips", () => {
   assert.match(app, /function difficultyChip\(/);
   assert.match(app, /function categoryChip\(/);
   assert.match(app, /dom\.hostQuestionMeta\.innerHTML = categoryChip\(/);
-  assert.match(app, /dom\.stageDifficulty\.innerHTML = publicQuestion \? difficultyChip\(/);
+  assert.match(app, /dom\.stageDifficulty\.innerHTML = revealed && publicQuestion \? difficultyChip\(/);
   assert.match(css, /\.chip-difficulty\[data-difficulty="Spark"\]/);
   assert.match(css, /\.chip-difficulty\[data-difficulty="Inferno"\]/);
   assert.match(css, /\.chip-difficulty\[data-difficulty="Wild 420"\]/);
