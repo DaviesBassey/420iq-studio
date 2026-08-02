@@ -106,3 +106,11 @@ test("service worker cleans up stale shell caches on activate and controls clien
   assert.match(sw, /key\.startsWith\("420iq-shell-"\) && key !== CACHE_NAME/);
   assert.match(sw, /request\.mode === "navigate"/);
 });
+
+test("service worker never caches or intercepts live /sync/ relay endpoints", () => {
+  const sw = readProjectFile("service-worker.js");
+
+  // Caching an open SSE stream would serve a dead connection on the next load,
+  // so /sync/* must bypass the worker entirely.
+  assert.match(sw, /url\.pathname\.startsWith\("\/sync\/"\)/);
+});

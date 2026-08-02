@@ -13,9 +13,9 @@
  * Bump the `?v=` token on engine.js / app.js in index.html AND here together
  * when their contents change, so the precache stores the fresh bytes.
  */
-const CACHE_VERSION = "v21";
+const CACHE_VERSION = "v27";
 const CACHE_NAME = `420iq-shell-${CACHE_VERSION}`;
-const ASSET_VERSION = "420iq28";
+const ASSET_VERSION = "420iq34";
 
 // Core shell: if any of these fail to cache, offline launch is impossible, so
 // `addAll` fails loudly (atomic) and the old worker stays in control.
@@ -82,6 +82,13 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Live relay endpoints (SSE stream, health) must never be cached or
+  // intercepted — caching an open event stream serves a dead connection on the
+  // next load. Let the browser talk to the relay directly.
+  if (url.pathname.startsWith("/sync/")) {
     return;
   }
 

@@ -147,6 +147,14 @@ npm start
 # then open http://localhost:8787/?access=admin#host
 ```
 
+`npm start` runs the live relay (`relay.js`): it serves the app *and* relays the
+host's state across the LAN, so a phone or second screen that opens the player
+URL follows the show live instead of showing "waiting for the host". It prints
+the LAN address to open the host on — both devices must share one network. The
+relay is zero-dependency (Node's built-in HTTP + Server-Sent Events) and keeps
+state on the LAN; no cloud hop. Use `npm run serve` for the bare static server
+(no sync) when you only need to check the local-first / GitHub Pages behaviour.
+
 ## Deploy
 
 Copy this directory to any static host that serves over **HTTPS** (GitHub

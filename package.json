@@ -5,9 +5,9 @@
   "type": "commonjs",
   "description": "Local-first PWA host controller for the 420IQ quiz show.",
   "scripts": {
-    "start": "python3 -m http.server 8787",
+    "start": "node relay.js",
     "serve": "python3 -m http.server 8787",
     "test": "node --test tests/*.test.js",
-    "check": "node --check app.js && node --check engine.js && node --check service-worker.js"
+    "check": "node --check app.js && node --check engine.js && node --check service-worker.js && node --check relay.js"
   }
 }

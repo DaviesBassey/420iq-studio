@@ -25,7 +25,7 @@ processing).
 ## Verify after it goes live
 
 - Open the URL. It should load the Host console.
-- DevTools → **Network**: assets load as `…?v=420iq27` (the current token).
+- DevTools → **Network**: assets load as `…?v=420iq28` (the current token).
 - DevTools → **Application → Service Workers**: one active worker, scope
   `/420iq-studio/`. → **Manifest**: installable, no errors.
 - Try **Install app** (address-bar icon) → it should launch standalone.
@@ -40,10 +40,14 @@ processing).
   the host controls. That's fine while the app is local-first — there's no shared
   server, so each browser only drives its own local session. Don't treat the
   admin URL as private once the audience/backend path is live.
-- **Player QR.** Hosted over HTTPS, the join QR resolves to the public player URL
-  automatically (no LAN IP needed). But `main` has no sync yet — audience mode is
-  locked per `PLAN.md` — so that page shows the "waiting for the host" state. It's
-  scaffolding until the audience path ships; expected, not a bug.
+- **Player QR.** Hosted over HTTPS on a static host (GitHub Pages), the join QR
+  resolves to the public player URL, but that page shows "waiting for the host" —
+  a static host can't relay state, so there is no cross-device sync on this path.
+  For live sync, run the app from the **LAN relay** instead (`npm start` →
+  `relay.js`): the host and a phone on the same Wi-Fi share live state, and the
+  player mirrors the show. See the README. A cloud realtime channel would give
+  the same live sync over HTTPS from any network — the client transport is
+  written to swap in later (the `{type:"state", game}` message shape is identical).
 - **Cache/versioning still applies.** Every asset change must bump the `?v=` token
   in `index.html` and `ASSET_VERSION` + `CACHE_VERSION` in `service-worker.js`, or
   returning visitors get stale assets. Pages also fronts a CDN cache (~10 min), so

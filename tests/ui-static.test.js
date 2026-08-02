@@ -217,7 +217,6 @@ test("host side panel restores a static scan-to-join player card", () => {
   assert.match(app, /function reedSolomonRemainder\(data, divisor\)/);
   assert.match(app, /dom\.copyLinkButtons\.forEach/);
   assert.doesNotMatch(app, /fetch\("\.\/api\/sessions"/);
-  assert.doesNotMatch(app, /new EventSource\(/);
   assert.match(css, /\.join-panel/);
   assert.match(css, /\.join-qr-card/);
   assert.match(css, /\.join-link-row/);
@@ -231,12 +230,50 @@ test("player QR avoids localhost links that fail on phones", () => {
   assert.match(html, /id="joinHostInput"/);
   assert.match(html, /id="applyJoinHostButton"/);
   assert.match(html, /id="joinHelp"/);
+  assert.match(html, /placeholder="192\.168\.x\.x:8787"/);
   assert.match(app, /const JOIN_HOST_KEY = "420iqJoinHostV1"/);
   assert.match(app, /function isLoopbackHost\(hostname\)/);
-  assert.match(app, /function buildPhoneReachableUrl\(access, hash\)/);
+  assert.match(app, /function isWebProtocol\(protocol\)/);
+  assert.match(app, /function buildPhoneReachableUrl\(access, hash, hostOverride = joinHostOverride\)/);
   assert.match(app, /drawQrPlaceholder\(canvas, "LAN URL"\)/);
   assert.match(app, /localStorage\.setItem\(JOIN_HOST_KEY, normalisedHost\)/);
+  assert.match(app, /This page is open from disk\. Run npm start/);
   assert.match(css, /\.join-help/);
+});
+
+test("player QR never encodes file URLs and rebuilds LAN override links as HTTP", () => {
+  const app = readProjectFile("app.js");
+
+  assert.match(app, /function isWebProtocol\(protocol\)/);
+  assert.match(app, /new URL\(`http:\/\/\$\{normalisedHost\}/);
+  assert.match(app, /function buildPlayerJoinPathname\(url\)/);
+  assert.match(app, /if \(!isWebProtocol\(url\.protocol\)\) \{[\s\S]*return null;[\s\S]*\}/);
+});
+
+test("player QR uses a compact easier-to-scan code for the exact player link", () => {
+  const app = readProjectFile("app.js");
+
+  assert.match(app, /const QR_VERSION = 5/);
+  assert.match(app, /const QR_ALIGNMENT_POSITIONS = \[6, 30\]/);
+  assert.match(app, /const QR_DATA_CODEWORD_COUNT = 108/);
+  assert.match(app, /const QR_ERROR_CORRECTION_CODEWORDS = 26/);
+  assert.match(app, /const QR_BYTE_COUNT_BITS = 8/);
+  assert.match(app, /buildPlayerJoinPathname\(url\)/);
+  assert.match(app, /pathname\.endsWith\("\/index\.html"\)/);
+  assert.match(app, /drawQrMatrix\(canvas, matrix\)/);
+  assert.match(app, /appendBits\(dataBytes\.length, QR_BYTE_COUNT_BITS\)/);
+  assert.match(app, /if \(versionNumber < 7\) \{[\s\S]*return;[\s\S]*\}/);
+});
+
+test("player QR previews the typed phone host before it is saved", () => {
+  const app = readProjectFile("app.js");
+
+  assert.match(app, /function previewJoinHostInput\(\)/);
+  assert.match(app, /const typedHost = normaliseJoinHost\(dom\.joinHostInput \? dom\.joinHostInput\.value : ""\)/);
+  assert.match(app, /buildPhoneReachableUrl\("player", "#player", typedHost\)/);
+  assert.match(app, /dom\.playerJoinLink\.value = playerUrl \? playerUrl\.href : ""/);
+  assert.match(app, /renderPlayerJoinQr\(playerUrl \? playerUrl\.href : ""\)/);
+  assert.match(app, /dom\.joinHostInput\.addEventListener\("input", previewJoinHostInput\)/);
 });
 
 test("html carries an early player access bootstrap and current cache token", () => {
@@ -246,8 +283,8 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq28"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq28"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq34"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq34"><\/script>/);
 });
 
 test("host-only undo reverts the last step via a compensating engine event", () => {

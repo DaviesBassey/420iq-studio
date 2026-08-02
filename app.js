@@ -27,6 +27,12 @@
     "Business & Ethics",
     "Future & Innovation"
   ];
+  const QR_VERSION = 5;
+  const QR_ALIGNMENT_POSITIONS = [6, 30];
+  const QR_DATA_CODEWORD_COUNT = 108;
+  const QR_ERROR_CORRECTION_CODEWORDS = 26;
+  const QR_BYTE_COUNT_BITS = 8;
+  const QR_MAX_BYTE_LENGTH = QR_DATA_CODEWORD_COUNT - 2;
 
   const DEMO_QUESTIONS = [
     {
@@ -507,6 +513,7 @@
   let lastTickSecond = null;
   let timeoutCuePlayed = false;
   let syncChannel = null;
+  let networkSyncEnabled = false;
   let joinHostOverride = readJoinHostOverride();
   const accessMode = readAccessMode();
 
@@ -952,6 +959,7 @@
     }
 
     postSync({ type: "state", game });
+    publishStateToRelay();
   }
 
   function queuePendingCue(type) {
@@ -1009,6 +1017,30 @@
     playIncomingGameCue(previousGame, game);
   }
 
+  function applyIncomingAnswer(message) {
+    // Host-only: a contestant device chose an answer. Set it as the pending
+    // selection so the host can lock it; the host stays authoritative.
+    if (isDisplayAccess() || !game || typeof message.choiceIndex !== "number") {
+      return;
+    }
+
+    // Ignore a stale tap from a previous question.
+    if (message.questionIndex != null && message.questionIndex !== game.activeQuestionIndex) {
+      return;
+    }
+
+    // Only while the answer is still open (not locked/revealed).
+    const canSelect =
+      (game.phase === "QUESTION_LIVE" || game.phase === "LIFELINE_ACTIVE") && !game.lockedAnswer;
+    if (!canSelect || message.choiceIndex < 0) {
+      return;
+    }
+
+    selectedChoiceIndex = message.choiceIndex;
+    render();
+    playCue("answerSelect");
+  }
+
   function handleSyncMessage(message) {
     if (!message) {
       return;
@@ -1022,6 +1054,13 @@
 
     if (message.type === "state" && isDisplayAccess()) {
       applyIncomingGame(message.game);
+      return;
+    }
+
+    // A contestant device tapped an answer — surface it on the host console as a
+    // pending selection. The host still sets confidence and commits the lock.
+    if (message.type === "answer" && !isDisplayAccess()) {
+      applyIncomingAnswer(message);
     }
   }
 
@@ -1046,6 +1085,102 @@
       // Our initial localStorage read may be stale — ask the host to push now.
       postSync({ type: "request" });
     }
+  }
+
+  function publishStateToRelay() {
+    // Host-only: mirror authoritative state to the LAN relay so a phone or a
+    // second-device display on the network can follow the live show. No-op when
+    // the app is served statically (no relay) — network sync stays disabled.
+    if (!networkSyncEnabled || isDisplayAccess() || !game) {
+      return;
+    }
+
+    try {
+      fetch("/sync/publish", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "state", game }),
+        keepalive: true
+      }).catch(() => {
+        // Relay unreachable mid-show — same-browser BroadcastChannel still works.
+      });
+    } catch (error) {
+      /* fetch unsupported or blocked; ignore */
+    }
+  }
+
+  function publishAnswerToRelay(choiceIndex) {
+    // Player-only: send the contestant's tapped choice back to the host over the
+    // relay. Tagged with the question index so a stale tap can't apply later.
+    if (!networkSyncEnabled || accessMode !== "player" || !game) {
+      return;
+    }
+
+    try {
+      fetch("/sync/answer", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type: "answer",
+          choiceIndex,
+          questionIndex: game.activeQuestionIndex
+        }),
+        keepalive: true
+      }).catch(() => {
+        /* relay unreachable; local selection still shows on this device */
+      });
+    } catch (error) {
+      /* fetch unsupported or blocked; ignore */
+    }
+  }
+
+  function openRelayStateStream() {
+    // Display-only: subscribe to the relay's SSE stream. The relay replays the
+    // last cached state on connect, so a phone joining mid-show catches up.
+    if (!("EventSource" in window)) {
+      return;
+    }
+
+    try {
+      const stream = new EventSource("/sync/subscribe");
+      stream.addEventListener("message", event => {
+        try {
+          handleSyncMessage(JSON.parse(event.data));
+        } catch (error) {
+          /* malformed frame; ignore */
+        }
+      });
+      // EventSource auto-reconnects; acceptable against a known-present relay.
+    } catch (error) {
+      /* ignore */
+    }
+  }
+
+  function initNetworkSync() {
+    // Cross-device sync only activates when served by the live relay. On static
+    // hosting (GitHub Pages) or file://, /sync/health is absent, so this stays
+    // off and the app runs local-first with no failing requests.
+    if (!("fetch" in window)) {
+      return;
+    }
+
+    fetch("/sync/health", { cache: "no-store" })
+      .then(response => (response.ok ? response.json() : null))
+      .then(info => {
+        if (!info || !info.ok) {
+          return;
+        }
+        networkSyncEnabled = true;
+        // Everyone listens: displays receive state, the host receives answers.
+        openRelayStateStream();
+        if (!isDisplayAccess()) {
+          // Host also pushes current state so phones already subscribed catch up.
+          publishStateToRelay();
+        }
+      })
+      .catch(() => {
+        /* no relay; stay local-first */
+      });
   }
 
   function initAgeGate() {
@@ -1119,6 +1254,10 @@
     );
   }
 
+  function isWebProtocol(protocol) {
+    return protocol === "http:" || protocol === "https:";
+  }
+
   function normaliseJoinHost(value) {
     const rawValue = String(value || "").trim();
     if (!rawValue) {
@@ -1137,16 +1276,60 @@
     return normaliseJoinHost(localStorage.getItem(JOIN_HOST_KEY));
   }
 
-  function buildPhoneReachableUrl(access, hash) {
-    const url = buildAccessUrl(access, hash);
-    const normalisedHost = normaliseJoinHost(joinHostOverride);
-
-    if (normalisedHost) {
-      url.host = normalisedHost;
-      return url;
+  function buildPlayerJoinPathname(url) {
+    if (url.protocol === "file:") {
+      return "/";
     }
 
-    return isLoopbackHost(url.hostname) ? null : url;
+    const pathname = url.pathname || "/";
+    if (pathname.endsWith("/index.html")) {
+      return pathname.slice(0, -"index.html".length) || "/";
+    }
+
+    return pathname;
+  }
+
+  function buildPhoneReachableUrl(access, hash, hostOverride = joinHostOverride) {
+    const url = buildAccessUrl(access, hash);
+    const normalisedHost = normaliseJoinHost(hostOverride);
+
+    if (normalisedHost) {
+      const pathname = buildPlayerJoinPathname(url);
+      const joinUrl = new URL(`http://${normalisedHost}${pathname}`);
+      joinUrl.search = url.search;
+      joinUrl.hash = url.hash;
+      return joinUrl;
+    }
+
+    if (!isWebProtocol(url.protocol)) {
+      return null;
+    }
+
+    if (isLoopbackHost(url.hostname)) {
+      return null;
+    }
+
+    url.pathname = buildPlayerJoinPathname(url);
+    return url;
+  }
+
+  function previewJoinHostInput() {
+    const typedHost = normaliseJoinHost(dom.joinHostInput ? dom.joinHostInput.value : "");
+    const playerUrl = buildPhoneReachableUrl("player", "#player", typedHost);
+
+    if (dom.playerJoinLink) {
+      dom.playerJoinLink.value = playerUrl ? playerUrl.href : "";
+    }
+
+    if (dom.joinHelp) {
+      dom.joinHelp.textContent = playerUrl
+        ? "QR preview uses the address shown below. Tap Use to remember it."
+        : window.location.protocol === "file:"
+          ? "This page is open from disk. Run npm start, then enter this computer's LAN IP and port."
+          : "Enter this computer's LAN IP and port, then tap Use.";
+    }
+
+    renderPlayerJoinQr(playerUrl ? playerUrl.href : "");
   }
 
   function renderPlayerJoinPanel() {
@@ -1159,7 +1342,9 @@
     if (dom.joinHelp) {
       dom.joinHelp.textContent = playerUrl
         ? "QR uses the address shown below."
-        : "localhost only works on this computer. Enter this computer's LAN IP and port, then tap Use.";
+        : window.location.protocol === "file:"
+          ? "This page is open from disk. Run npm start, then enter this computer's LAN IP and port."
+          : "localhost only works on this computer. Enter this computer's LAN IP and port, then tap Use.";
     }
 
     if (!dom.playerJoinLink) {
@@ -1289,13 +1474,11 @@
   }
 
   function createQrCodeMatrix(value) {
-    const version = 10;
+    const version = QR_VERSION;
     const size = version * 4 + 17;
-    const dataCodewordCount = 274;
-    const maxByteLength = 271;
     const bytes = utf8Bytes(String(value));
 
-    if (bytes.length > maxByteLength) {
+    if (bytes.length > QR_MAX_BYTE_LENGTH) {
       throw new Error("Player link is too long for the local QR generator.");
     }
 
@@ -1341,8 +1524,8 @@
       drawFinderPattern(size - 4, 3);
       drawFinderPattern(3, size - 4);
 
-      [6, 28, 50].forEach(y => {
-        [6, 28, 50].forEach(x => {
+      QR_ALIGNMENT_POSITIONS.forEach(y => {
+        QR_ALIGNMENT_POSITIONS.forEach(x => {
           if (!functions[y][x]) {
             drawAlignmentPattern(x, y);
           }
@@ -1384,6 +1567,10 @@
     }
 
     function drawVersionBits(versionNumber) {
+      if (versionNumber < 7) {
+        return;
+      }
+
       let remainder = versionNumber;
       for (let i = 0; i < 12; i += 1) {
         remainder = (remainder << 1) ^ (((remainder >>> 11) & 1) * 0x1f25);
@@ -1401,7 +1588,7 @@
 
     const maskPattern = 2;
     drawFunctionPatterns(maskPattern);
-    const codewords = createQrCodewords(bytes, dataCodewordCount);
+    const codewords = createQrCodewords(bytes);
     let bitIndex = 0;
 
     for (let right = size - 1; right >= 1; right -= 2) {
@@ -1433,7 +1620,7 @@
     return modules;
   }
 
-  function createQrCodewords(dataBytes, dataCodewordCount) {
+  function createQrCodewords(dataBytes) {
     const bits = [];
     const appendBits = (value, length) => {
       for (let i = length - 1; i >= 0; i -= 1) {
@@ -1442,10 +1629,10 @@
     };
 
     appendBits(0x4, 4);
-    appendBits(dataBytes.length, 16);
+    appendBits(dataBytes.length, QR_BYTE_COUNT_BITS);
     dataBytes.forEach(byte => appendBits(byte, 8));
 
-    const capacityBits = dataCodewordCount * 8;
+    const capacityBits = QR_DATA_CODEWORD_COUNT * 8;
     for (let i = 0; i < 4 && bits.length < capacityBits; i += 1) {
       bits.push(0);
     }
@@ -1462,7 +1649,7 @@
       dataCodewords.push(codeword);
     }
 
-    for (let padByte = 0xec; dataCodewords.length < dataCodewordCount; padByte ^= 0xfd) {
+    for (let padByte = 0xec; dataCodewords.length < QR_DATA_CODEWORD_COUNT; padByte ^= 0xfd) {
       dataCodewords.push(padByte);
     }
 
@@ -1470,38 +1657,8 @@
   }
 
   function appendQrErrorCorrection(dataCodewords) {
-    const blockCount = 4;
-    const shortBlockCount = 2;
-    const shortDataCount = 68;
-    const longDataCount = 69;
-    const errorCorrectionCodewords = 18;
-    const divisor = reedSolomonDivisor(errorCorrectionCodewords);
-    const blocks = [];
-    let offset = 0;
-
-    for (let blockIndex = 0; blockIndex < blockCount; blockIndex += 1) {
-      const dataCount = blockIndex < shortBlockCount ? shortDataCount : longDataCount;
-      const data = dataCodewords.slice(offset, offset + dataCount);
-      offset += dataCount;
-      blocks.push({
-        data,
-        errorCorrection: reedSolomonRemainder(data, divisor)
-      });
-    }
-
-    const result = [];
-    for (let i = 0; i < longDataCount; i += 1) {
-      blocks.forEach(block => {
-        if (i < block.data.length) {
-          result.push(block.data[i]);
-        }
-      });
-    }
-    for (let i = 0; i < errorCorrectionCodewords; i += 1) {
-      blocks.forEach(block => result.push(block.errorCorrection[i]));
-    }
-
-    return result;
+    const divisor = reedSolomonDivisor(QR_ERROR_CORRECTION_CODEWORDS);
+    return dataCodewords.concat(reedSolomonRemainder(dataCodewords, divisor));
   }
 
   function reedSolomonDivisor(degree) {
@@ -2246,6 +2403,7 @@
         selectedChoiceIndex = index;
         render();
         playCue("answerSelect");
+        publishAnswerToRelay(index);
       });
 
       container.appendChild(button);
@@ -2839,6 +2997,7 @@
     dom.applyJoinHostButton.addEventListener("click", applyJoinHostOverride);
   }
   if (dom.joinHostInput) {
+    dom.joinHostInput.addEventListener("input", previewJoinHostInput);
     dom.joinHostInput.addEventListener("keydown", event => {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -3017,6 +3176,7 @@
   syncSoundButton();
   installMobileAudioUnlock();
   initCrossWindowSync();
+  initNetworkSync();
   initAgeGate();
   window.setInterval(updateTimerDisplays, 250);
   // Heal storage on load: if the session was recovered from the mirror key
