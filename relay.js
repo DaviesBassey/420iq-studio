@@ -153,11 +153,20 @@ function createRelayServer(options = {}) {
 
     // --- health / feature-detection for the client ---
     if (pathname === "/sync/health" && req.method === "GET") {
+      // Hand the client the machine's LAN address (LAN IP + the port it was
+      // reached on) so the join QR resolves to a phone-reachable URL even when
+      // the host page was opened via localhost.
+      const reqHost = req.headers.host || "";
+      const portPart = reqHost.includes(":") ? reqHost.split(":")[1] : "";
+      const lanIp = firstLanAddress();
+      const lanHost = lanIp !== "localhost" && portPart ? `${lanIp}:${portPart}` : null;
       res.writeHead(200, {
         "content-type": "application/json",
         "access-control-allow-origin": "*"
       });
-      res.end(JSON.stringify({ ok: true, subscribers: subscribers.size, hasState: lastState !== null }));
+      res.end(
+        JSON.stringify({ ok: true, host: lanHost, subscribers: subscribers.size, hasState: lastState !== null })
+      );
       return;
     }
 

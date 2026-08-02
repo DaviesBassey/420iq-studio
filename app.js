@@ -1171,6 +1171,14 @@
           return;
         }
         networkSyncEnabled = true;
+        // Opened via localhost? Adopt the relay's LAN address so the join QR
+        // resolves to something a phone can reach — no manual IP entry. A host
+        // the operator saved by hand always wins; not persisted, so it re-detects
+        // if the network changes.
+        if (info.host && !joinHostOverride && isLoopbackHost(location.hostname)) {
+          joinHostOverride = info.host;
+          renderPlayerJoinPanel();
+        }
         // Everyone listens: displays receive state, the host receives answers.
         openRelayStateStream();
         if (!isDisplayAccess()) {

@@ -194,6 +194,24 @@ test("client wires network sync: host publishes, displays subscribe", () => {
   assert.match(app, /function applyIncomingAnswer/);
   assert.match(app, /message\.type === "answer" && !isDisplayAccess\(\)/);
   assert.match(app, /publishAnswerToRelay\(index\);/);
+
+  // Localhost QR: the client adopts the relay-reported LAN host so the QR works
+  // without manual IP entry when the host was opened via localhost.
+  assert.match(app, /info\.host && !joinHostOverride && isLoopbackHost\(location\.hostname\)/);
+  assert.match(app, /joinHostOverride = info\.host;/);
+});
+
+test("health reports the machine's LAN host for the join QR", async () => {
+  const server = createRelayServer({ root: projectRoot });
+  const port = await listen(server);
+  const res = await getPlain(port, "/sync/health");
+  const info = JSON.parse(res.body);
+  assert.equal(info.ok, true);
+  assert.ok("host" in info); // string "ip:port" when a LAN address exists, else null
+  if (info.host !== null) {
+    assert.match(info.host, /^\d+\.\d+\.\d+\.\d+:\d+$/);
+  }
+  await close(server);
 });
 
 test("relays a contestant answer to subscribers", async () => {
