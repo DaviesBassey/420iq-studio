@@ -1174,6 +1174,17 @@ h3 {
   color: #fff4f4;
 }
 
+/* 50:50 — removed wrong answers read as clearly struck out but still legible. */
+.answer-choice.eliminated,
+.player-choice.eliminated,
+.stage-answer.eliminated,
+.phone-choice.eliminated {
+  opacity: 0.32;
+  filter: grayscale(1);
+  text-decoration: line-through;
+  pointer-events: none;
+}
+
 .confidence-panel,
 .lifeline-panel,
 .final-panel {

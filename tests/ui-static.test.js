@@ -94,6 +94,23 @@ test("player answer selection triggers SFX feedback", () => {
   assert.match(app, /document\.addEventListener\("keydown"[\s\S]*selectedChoiceIndex = index;[\s\S]*render\(\);[\s\S]*playCue\("answerSelect"\);/);
 });
 
+test("50:50 lifeline is wired end to end and removes only wrong answers", () => {
+  const html = readProjectFile("index.html");
+  const app = readProjectFile("app.js");
+  const engine = readProjectFile("engine.js");
+  const css = readProjectFile("styles.css");
+
+  assert.match(html, /id="fiftyButton"/);
+  assert.match(app, /fiftyButton: document\.getElementById\("fiftyButton"\)/);
+  assert.match(app, /dom\.fiftyButton\.disabled = !\(game && phase === "QUESTION_LIVE" && !game\.lifelines\.fiftyFifty\.used\)/);
+  assert.match(app, /IQ\.useFiftyFifty\(game, "producer"\)/);
+  assert.match(app, /button\.classList\.add\("eliminated"\)/);
+  assert.match(css, /\.player-choice\.eliminated/);
+  // Engine keeps the correct answer and never exposes the key.
+  assert.match(engine, /function useFiftyFifty/);
+  assert.match(engine, /filter\(index => index !== question\.correctIndex\)/);
+});
+
 test("premium spacing tokens align stage, timer and 9:16 surfaces", () => {
   const css = readProjectFile("styles.css");
 
@@ -283,8 +300,8 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq37"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq37"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq38"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq38"><\/script>/);
 });
 
 test("contestant and stage hide the question until it goes live", () => {

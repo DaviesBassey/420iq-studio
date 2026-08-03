@@ -399,7 +399,8 @@
       },
       lifelines: {
         trustedCircle: { used: false },
-        sourceSignal: { used: false }
+        sourceSignal: { used: false },
+        fiftyFifty: { used: false, removed: null }
       },
       trustedCircle,
       lifelineActive: null,
@@ -493,7 +494,13 @@
       choices: question.choices.slice(),
       sourceSignals: question.sourceSignals.slice(),
       sensitivity: question.sensitivity,
-      final: question.final
+      final: question.final,
+      // The 50:50 removes only wrong answers, so exposing them never leaks the
+      // key — displays grey these out while the correct choice stays hidden.
+      fiftyFiftyRemoved:
+        game.lifelines.fiftyFifty && Array.isArray(game.lifelines.fiftyFifty.removed)
+          ? game.lifelines.fiftyFifty.removed.slice()
+          : null
     };
   }
 
@@ -698,6 +705,39 @@
       type: nextGame.lifelineActive.type,
       resolved: true
     }, actor);
+  }
+
+  function useFiftyFifty(game, actor = "producer") {
+    if (game.lifelines.fiftyFifty && game.lifelines.fiftyFifty.used) {
+      throw new Error("fiftyFifty has already used.");
+    }
+
+    if (game.phase !== "QUESTION_LIVE") {
+      throw new Error(`Cannot use 50:50 during ${game.phase}.`);
+    }
+
+    const question = currentQuestion(game);
+    const wrongIndices = question.choices
+      .map((choice, index) => index)
+      .filter(index => index !== question.correctIndex);
+
+    // Leave the correct answer plus one wrong answer: remove up to two wrongs.
+    // Deterministic (seeded) so a rewind + redo picks the same pair.
+    const removeCount = Math.min(2, Math.max(0, wrongIndices.length - 1));
+    const shuffled = shuffleWithSeed(wrongIndices, `${game.seed}:${game.events.length}:fifty-fifty`);
+    const removed = shuffled.slice(0, removeCount).sort((a, b) => a - b);
+
+    // Instant modifier: no LIFELINE_ACTIVE resolution flow, stays QUESTION_LIVE.
+    const nextGame = clone(game);
+    nextGame.lifelines.fiftyFifty = { used: true, removed };
+
+    return addEvent(nextGame, {
+      type: "FIFTY_FIFTY_USED",
+      actor,
+      previousState: game.phase,
+      nextState: game.phase,
+      payload: { removed }
+    });
   }
 
   function lockAnswer(game, payload = {}, actor = "contestant") {
@@ -966,6 +1006,7 @@
     scoreAnswer,
     activateLifeline,
     resolveLifeline,
+    useFiftyFifty,
     lockAnswer,
     revealAnswer,
     showKnowledgeDrop,

@@ -441,6 +441,7 @@
     liveButton: document.getElementById("liveButton"),
     sourceButton: document.getElementById("sourceButton"),
     trustedButton: document.getElementById("trustedButton"),
+    fiftyButton: document.getElementById("fiftyButton"),
     lockButton: document.getElementById("lockButton"),
     revealButton: document.getElementById("revealButton"),
     dropButton: document.getElementById("dropButton"),
@@ -2447,13 +2448,19 @@
     const visibleSelection = lockedChoice !== null ? lockedChoice : selectedChoiceIndex;
     const reveal = game ? game.reveal : null;
     const canSelect = game && (game.phase === "QUESTION_LIVE" || game.phase === "LIFELINE_ACTIVE") && !game.lockedAnswer;
+    const eliminated = (publicQuestion && publicQuestion.fiftyFiftyRemoved) || [];
 
     publicQuestion.choices.forEach((choice, index) => {
+      const isEliminated = !reveal && eliminated.includes(index);
       const button = document.createElement("button");
       button.type = "button";
       button.className = className;
       button.dataset.choiceIndex = String(index);
-      button.disabled = !canSelect;
+      button.disabled = !canSelect || isEliminated;
+
+      if (isEliminated) {
+        button.classList.add("eliminated");
+      }
 
       if (visibleSelection === index && !reveal) {
         button.classList.add("selected");
@@ -2467,7 +2474,7 @@
 
       button.innerHTML = `<span>${ANSWER_LETTERS[index] || index + 1}</span><span>${escapeHtml(choice)}</span>`;
       button.addEventListener("click", () => {
-        if (!canSelect) return;
+        if (!canSelect || isEliminated) return;
         selectedChoiceIndex = index;
         render();
         playCue("answerSelect");
@@ -2482,10 +2489,15 @@
     container.innerHTML = "";
     const lockedChoice = game && game.lockedAnswer ? game.lockedAnswer.choiceIndex : null;
     const reveal = game ? game.reveal : null;
+    const eliminated = (publicQuestion && publicQuestion.fiftyFiftyRemoved) || [];
 
     publicQuestion.choices.forEach((choice, index) => {
       const row = document.createElement("div");
       row.className = className;
+
+      if (!reveal && eliminated.includes(index)) {
+        row.classList.add("eliminated");
+      }
 
       if (reveal && reveal.correctIndex === index) {
         row.classList.add("correct");
@@ -2604,6 +2616,7 @@
     dom.liveButton.disabled = !can("QUESTION_LIVE");
     dom.sourceButton.disabled = !(game && phase === "QUESTION_LIVE" && !game.lifelines.sourceSignal.used);
     dom.trustedButton.disabled = !(game && phase === "QUESTION_LIVE" && !game.lifelines.trustedCircle.used);
+    dom.fiftyButton.disabled = !(game && phase === "QUESTION_LIVE" && !game.lifelines.fiftyFifty.used);
     dom.lockButton.disabled = !(game && (phase === "QUESTION_LIVE" || phase === "LIFELINE_ACTIVE") && selectedChoiceIndex !== null && !game.lockedAnswer);
     dom.revealButton.disabled = !can("REVEAL");
     dom.dropButton.disabled = !(game && phase === "REVEAL" && IQ.currentQuestion(game).knowledgeDrop);
@@ -2714,13 +2727,20 @@
     dom.verticalBars.innerHTML = "";
     if (!publicQuestion) return;
 
+    const eliminated = publicQuestion.fiftyFiftyRemoved || [];
+
     publicQuestion.choices.slice(0, 4).forEach((choice, index) => {
+      const isEliminated = !reveal && eliminated.includes(index);
       const button = document.createElement("button");
       button.type = "button";
       button.className = "phone-choice";
       button.dataset.choiceIndex = String(index);
-      button.disabled = !canSelect;
+      button.disabled = !canSelect || isEliminated;
       button.setAttribute("aria-pressed", String(visibleSelection === index && !reveal));
+
+      if (isEliminated) {
+        button.classList.add("eliminated");
+      }
 
       if (visibleSelection === index && !reveal) {
         button.classList.add("selected");
@@ -2734,7 +2754,7 @@
 
       button.innerHTML = `<span>${ANSWER_LETTERS[index] || index + 1}</span><strong>${escapeHtml(choice)}</strong>`;
       button.addEventListener("click", () => {
-        if (!canSelect) return;
+        if (!canSelect || isEliminated) return;
         selectedChoiceIndex = index;
         render();
         playCue("answerSelect");
@@ -2782,7 +2802,8 @@
     dom.lifelineState.innerHTML = "";
     [
       ["Trusted Circle", game.lifelines.trustedCircle.used],
-      ["Source Signal", game.lifelines.sourceSignal.used]
+      ["Source Signal", game.lifelines.sourceSignal.used],
+      ["50:50", game.lifelines.fiftyFifty.used]
     ].forEach(([label, used]) => {
       const item = document.createElement("div");
       item.className = "state-pill";
@@ -3162,6 +3183,15 @@
     playCue("lifeline");
   }));
 
+  dom.fiftyButton.addEventListener("click", () => perform(() => {
+    game = IQ.useFiftyFifty(game, "producer");
+    const removed = game.lifelines.fiftyFifty.removed || [];
+    if (removed.includes(selectedChoiceIndex)) {
+      selectedChoiceIndex = null;
+    }
+    playCue("lifeline");
+  }));
+
   dom.lockButton.addEventListener("click", () => perform(() => {
     game = IQ.lockAnswer(game, {
       choiceIndex: selectedChoiceIndex,
@@ -3221,7 +3251,8 @@
 
     const index = ANSWER_LETTERS.indexOf(event.key.toUpperCase());
     const question = IQ.getPublicQuestion(game);
-    if (index >= 0 && index < question.choices.length && !game.lockedAnswer) {
+    const eliminated = (question && question.fiftyFiftyRemoved) || [];
+    if (index >= 0 && index < question.choices.length && !game.lockedAnswer && !eliminated.includes(index)) {
       selectedChoiceIndex = index;
       render();
       playCue("answerSelect");

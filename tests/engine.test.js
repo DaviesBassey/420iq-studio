@@ -181,6 +181,39 @@ test("lifelines cannot be reused and trusted circle falls back when contacts are
   );
 });
 
+test("50:50 removes two wrong answers, keeps the correct one, and cannot repeat", () => {
+  let game = engine.createGame({
+    mode: "solo",
+    players: [{ name: "Ari" }],
+    questions: sampleQuestions,
+    seed: "fifty-test"
+  });
+
+  // Cannot use it before the question is live.
+  assert.throws(() => engine.useFiftyFifty(game, "producer"), /Cannot use 50:50/);
+
+  game = engine.transition(game, "INTRO", {}, "producer");
+  game = engine.transition(game, "QUESTION_READY", {}, "producer");
+  game = engine.transition(game, "QUESTION_LIVE", {}, "producer");
+
+  const correctIndex = engine.currentQuestion(game).correctIndex;
+  game = engine.useFiftyFifty(game, "producer");
+
+  const removed = game.lifelines.fiftyFifty.removed;
+  assert.equal(game.lifelines.fiftyFifty.used, true);
+  assert.equal(removed.length, 2);
+  assert.ok(!removed.includes(correctIndex), "never removes the correct answer");
+  assert.equal(game.phase, "QUESTION_LIVE", "50:50 is an instant modifier, not a resolution flow");
+
+  // The public payload surfaces the removed pair (wrong answers only) and still
+  // hides the answer key.
+  const publicQuestion = engine.getPublicQuestion(game);
+  assert.deepEqual(publicQuestion.fiftyFiftyRemoved.slice().sort(), removed.slice().sort());
+  assert.equal(publicQuestion.correctIndex, undefined);
+
+  assert.throws(() => engine.useFiftyFifty(game, "producer"), /already used/);
+});
+
 test("same seed builds the same valid balanced sequence", () => {
   const first = engine.buildBalancedSequence(sampleQuestions, {
     seed: "episode-101",
