@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="420IQ">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=420iq38">
+  <link rel="stylesheet" href="./styles.css?v=420iq39">
 </head>
 <body data-theme="premium-mobile" data-access="admin">
   <script>
@@ -158,6 +158,10 @@
                   <strong id="scoreValue">0</strong>
                 </div>
                 <div>
+                  <span>Guaranteed</span>
+                  <strong id="guaranteedValue">0</strong>
+                </div>
+                <div>
                   <span>Question</span>
                   <strong id="questionCounter">0/0</strong>
                 </div>
@@ -251,6 +255,8 @@
               <button id="dropButton" type="button">Knowledge Drop</button>
               <button id="commitButton" type="button">Commit score</button>
               <button id="nextButton" type="button">Next question</button>
+              <button id="guaranteeButton" type="button">Bank guarantee</button>
+              <button id="walkAwayButton" type="button" class="danger">Walk away</button>
               <button id="decisionButton" type="button">420 Decision</button>
               <button id="openFinalButton" type="button">Open final</button>
               <button id="completeButton" type="button">Complete</button>
@@ -473,8 +479,8 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="./engine.js?v=420iq38"></script>
-  <script src="./app.js?v=420iq38"></script>
+  <script src="./engine.js?v=420iq39"></script>
+  <script src="./app.js?v=420iq39"></script>
   <script>
     (function register420IQServiceWorker() {
       if (!("serviceWorker" in navigator)) {

@@ -417,6 +417,8 @@
         running: false
       },
       finalDecision: null,
+      guaranteedFloor: 0,
+      outcome: null,
       rehearsal: true,
       results: [],
       events: []
@@ -592,12 +594,14 @@
       : DIFFICULTY_POINTS[difficulty];
     const multiplier = CONFIDENCE_MULTIPLIERS[confidence];
     const currentScore = Math.max(0, Number(input.currentScore) || 0);
+    // A banked guarantee is the floor a wrong answer can't drop below (>= 0).
+    const guaranteedFloor = Math.max(0, Number(input.guaranteedFloor) || 0);
     const rawDelta = hasRiskTarget
       ? (input.correct ? basePoints : -basePoints)
       : input.correct
       ? Math.round(basePoints * multiplier)
       : Math.round((DIFFICULTY_PENALTIES[difficulty] || 0) * multiplier);
-    const nextScore = Math.max(0, currentScore + rawDelta);
+    const nextScore = Math.max(guaranteedFloor, currentScore + rawDelta);
 
     return {
       delta: nextScore - currentScore,
@@ -740,6 +744,40 @@
     });
   }
 
+  function bankGuarantee(game, actor = "producer") {
+    if (game.phase === "COMPLETE") {
+      throw new Error("Cannot bank a guarantee after the show is complete.");
+    }
+
+    const currentScore = game.scores[game.participant.id] || 0;
+    // A safe haven only ratchets up — banking never lowers a floor already set.
+    const nextFloor = Math.max(game.guaranteedFloor || 0, currentScore);
+    const nextGame = clone(game);
+    nextGame.guaranteedFloor = nextFloor;
+
+    return addEvent(nextGame, {
+      type: "GUARANTEE_BANKED",
+      actor,
+      previousState: game.phase,
+      nextState: game.phase,
+      payload: { guaranteedFloor: nextFloor }
+    });
+  }
+
+  function walkAway(game, actor = "producer") {
+    // The contestant banks and leaves between questions rather than risk more.
+    const allowed = ["SCORE_COMMITTED", "NEXT_QUESTION", "FINAL"];
+    if (!allowed.includes(game.phase)) {
+      throw new Error(`Cannot walk away during ${game.phase}.`);
+    }
+
+    const bankedScore = game.scores[game.participant.id] || 0;
+    const nextGame = clone(game);
+    nextGame.outcome = { type: "walkAway", bankedScore };
+
+    return transition(nextGame, "COMPLETE", { outcome: "walkAway", bankedScore }, actor);
+  }
+
   function lockAnswer(game, payload = {}, actor = "contestant") {
     if (game.phase !== "QUESTION_LIVE" && game.phase !== "LIFELINE_ACTIVE") {
       throw new Error(`Cannot lock answer during ${game.phase}.`);
@@ -786,6 +824,7 @@
       confidence: game.lockedAnswer.confidence,
       correct,
       currentScore: game.scores[game.participant.id] || 0,
+      guaranteedFloor: game.guaranteedFloor || 0,
       riskPoints: game.finalDecision && question.final
         ? game.finalDecision.points
         : undefined
@@ -1007,6 +1046,8 @@
     activateLifeline,
     resolveLifeline,
     useFiftyFifty,
+    bankGuarantee,
+    walkAway,
     lockAnswer,
     revealAnswer,
     showKnowledgeDrop,

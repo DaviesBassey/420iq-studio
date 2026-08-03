@@ -214,6 +214,55 @@ test("50:50 removes two wrong answers, keeps the correct one, and cannot repeat"
   assert.throws(() => engine.useFiftyFifty(game, "producer"), /already used/);
 });
 
+test("banked guarantee floors the score and walk-away ends the run at the banked total", () => {
+  let game = engine.createGame({
+    mode: "solo",
+    players: [{ name: "Ari" }],
+    questions: sampleQuestions,
+    seed: "walkaway-test"
+  });
+
+  assert.equal(game.guaranteedFloor, 0, "new games start with no guarantee");
+  assert.equal(game.outcome, null);
+
+  // A guaranteed floor stops a wrong answer from dropping the score below it.
+  const scored = engine.scoreAnswer({
+    difficulty: "Inferno",
+    confidence: "Certain",
+    correct: false,
+    currentScore: 500,
+    guaranteedFloor: 400
+  });
+  assert.equal(scored.nextScore, 400, "-200 would give 300, but the floor holds at 400");
+
+  // bankGuarantee locks the current score as the floor and never lowers it.
+  game.scores[game.participant.id] = 600;
+  game = engine.bankGuarantee(game, "producer");
+  assert.equal(game.guaranteedFloor, 600);
+  game.scores[game.participant.id] = 300;
+  game = engine.bankGuarantee(game, "producer");
+  assert.equal(game.guaranteedFloor, 600, "banking never lowers the floor");
+
+  // Drive to a between-questions state, then walk away.
+  game = engine.transition(game, "INTRO", {}, "producer");
+  game = engine.transition(game, "QUESTION_READY", {}, "producer");
+  game = engine.transition(game, "QUESTION_LIVE", {}, "producer");
+  const correctIndex = engine.currentQuestion(game).correctIndex;
+  game = engine.lockAnswer(game, { choiceIndex: correctIndex, confidence: "Curious" }, "contestant");
+  game = engine.revealAnswer(game, "producer");
+  game = engine.commitScore(game, "scorekeeper");
+  assert.equal(game.phase, "SCORE_COMMITTED");
+
+  const banked = game.scores[game.participant.id];
+  game = engine.walkAway(game, "producer");
+  assert.equal(game.phase, "COMPLETE");
+  assert.equal(game.outcome.type, "walkAway");
+  assert.equal(game.outcome.bankedScore, banked);
+
+  // Cannot walk away again from a completed show.
+  assert.throws(() => engine.walkAway(game, "producer"), /Cannot walk away/);
+});
+
 test("same seed builds the same valid balanced sequence", () => {
   const first = engine.buildBalancedSequence(sampleQuestions, {
     seed: "episode-101",

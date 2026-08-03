@@ -417,6 +417,7 @@
     fullscreenButton: document.getElementById("fullscreenButton"),
     phaseLabel: document.getElementById("phaseLabel"),
     scoreValue: document.getElementById("scoreValue"),
+    guaranteedValue: document.getElementById("guaranteedValue"),
     questionCounter: document.getElementById("questionCounter"),
     hostTimerCard: document.getElementById("hostTimerCard"),
     hostTimerValue: document.getElementById("hostTimerValue"),
@@ -447,6 +448,8 @@
     dropButton: document.getElementById("dropButton"),
     commitButton: document.getElementById("commitButton"),
     nextButton: document.getElementById("nextButton"),
+    guaranteeButton: document.getElementById("guaranteeButton"),
+    walkAwayButton: document.getElementById("walkAwayButton"),
     decisionButton: document.getElementById("decisionButton"),
     openFinalButton: document.getElementById("openFinalButton"),
     completeButton: document.getElementById("completeButton"),
@@ -2238,11 +2241,14 @@
       correct,
       accuracy,
       finalScore: game.scores[game.participant.id] || 0,
+      guaranteedFloor: game.guaranteedFloor || 0,
+      outcome: game.outcome || null,
       player: game.participant.displayName,
       byDifficulty,
       lifelines: {
         trustedCircle: game.lifelines.trustedCircle.used,
-        sourceSignal: game.lifelines.sourceSignal.used
+        sourceSignal: game.lifelines.sourceSignal.used,
+        fiftyFifty: game.lifelines.fiftyFifty.used
       }
     };
   }
@@ -2285,11 +2291,14 @@
       </div>
     `).join("");
 
+    const walkedAway = recap.outcome && recap.outcome.type === "walkAway";
+
     dom.recapPanel.innerHTML = `
       <div class="recap-head">
-        <div class="section-kicker">Show complete</div>
+        <div class="section-kicker">${walkedAway ? "Walked away" : "Show complete"}</div>
         <h2 id="recapTitle">${escapeHtml(recap.player)}</h2>
         <div class="recap-final"><strong>${recap.finalScore.toLocaleString()}</strong><span>IQ</span></div>
+        ${walkedAway ? `<p class="recap-walkaway">Banked ${recap.outcome.bankedScore.toLocaleString()} IQ and walked away.</p>` : ""}
       </div>
       <div class="recap-blocks">
         <div class="recap-block accent-amber">
@@ -2305,6 +2314,7 @@
           <span>Lifelines</span>
           <p>Trusted Circle: ${recap.lifelines.trustedCircle ? "used" : "unused"}</p>
           <p>Source Signal: ${recap.lifelines.sourceSignal ? "used" : "unused"}</p>
+          <p>50:50: ${recap.lifelines.fiftyFifty ? "used" : "unused"}</p>
         </div>
       </div>
       <div class="recap-list">${rows || "<p class=\"recap-empty\">No committed questions to recap.</p>"}</div>
@@ -2327,8 +2337,10 @@
       return `<div class="stage-recap-chip">${difficultyChip(difficulty)}<span>${bucket.correct}/${bucket.total}</span></div>`;
     }).join("");
 
+    const walkedAway = recap.outcome && recap.outcome.type === "walkAway";
+
     dom.stageRecap.innerHTML = `
-      <div class="section-kicker">Show complete</div>
+      <div class="section-kicker">${walkedAway ? "Walked away" : "Show complete"}</div>
       <div class="stage-recap-score">
         <span>${escapeHtml(recap.player)}</span>
         <strong>${recap.finalScore.toLocaleString()} IQ</strong>
@@ -2401,6 +2413,7 @@
     if (!game) {
       dom.phaseLabel.textContent = "NO SESSION";
       dom.scoreValue.textContent = "0";
+      dom.guaranteedValue.textContent = "0";
       dom.questionCounter.textContent = "0/0";
       dom.hostQuestionMeta.textContent = "No active question";
       dom.hostQuestionStem.textContent = "Create a show session to begin.";
@@ -2418,6 +2431,7 @@
 
     dom.phaseLabel.textContent = game.phase;
     dom.scoreValue.textContent = score.toLocaleString();
+    dom.guaranteedValue.textContent = (game.guaranteedFloor || 0).toLocaleString();
     dom.questionCounter.textContent = `${publicQuestion.index}/${publicQuestion.total}`;
     dom.hostQuestionMeta.innerHTML = categoryChip(publicQuestion.domain) + difficultyChip(publicQuestion.difficulty);
     dom.hostQuestionStem.textContent = publicQuestion.stem;
@@ -2622,6 +2636,11 @@
     dom.dropButton.disabled = !(game && phase === "REVEAL" && IQ.currentQuestion(game).knowledgeDrop);
     dom.commitButton.disabled = !(game && (phase === "REVEAL" || phase === "KNOWLEDGE_DROP"));
     dom.nextButton.disabled = !(game && phase === "SCORE_COMMITTED" && !nextQuestionIsFinal() && !currentQuestionIsFinal());
+    // Bank a safe-haven floor whenever there's more score than is already guaranteed.
+    dom.guaranteeButton.disabled = !(game && phase !== "PRE_SHOW" && phase !== "COMPLETE"
+      && (game.scores[game.participant.id] || 0) > (game.guaranteedFloor || 0));
+    // Walk away (bank and end) only between questions, matching the engine guard.
+    dom.walkAwayButton.disabled = !(game && ["SCORE_COMMITTED", "NEXT_QUESTION", "FINAL"].includes(phase));
     dom.decisionButton.disabled = !(game && phase === "SCORE_COMMITTED" && nextQuestionIsFinal());
     dom.openFinalButton.disabled = !(game && phase === "FINAL");
     dom.completeButton.disabled = !(game && phase === "SCORE_COMMITTED" && currentQuestionIsFinal());
@@ -3217,6 +3236,18 @@
     game = IQ.advanceQuestion(game, "producer");
     selectedChoiceIndex = null;
     selectedSignalIndex = null;
+  }));
+
+  dom.guaranteeButton.addEventListener("click", () => perform(() => {
+    game = IQ.bankGuarantee(game, "producer");
+    showToast(`Guaranteed floor banked at ${(game.guaranteedFloor || 0).toLocaleString()} IQ.`);
+    playCue("ui");
+  }));
+
+  dom.walkAwayButton.addEventListener("click", () => perform(() => {
+    game = IQ.walkAway(game, "producer");
+    showToast(`Walked away with ${(game.outcome.bankedScore || 0).toLocaleString()} IQ.`);
+    playCue("ui");
   }));
 
   dom.decisionButton.addEventListener("click", () => perform(() => {

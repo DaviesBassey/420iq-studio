@@ -111,6 +111,23 @@ test("50:50 lifeline is wired end to end and removes only wrong answers", () => 
   assert.match(engine, /filter\(index => index !== question\.correctIndex\)/);
 });
 
+test("walk-away and guarantee floor are wired end to end", () => {
+  const html = readProjectFile("index.html");
+  const app = readProjectFile("app.js");
+  const engine = readProjectFile("engine.js");
+
+  assert.match(html, /id="guaranteeButton"/);
+  assert.match(html, /id="walkAwayButton"/);
+  assert.match(html, /id="guaranteedValue"/);
+  assert.match(app, /IQ\.bankGuarantee\(game, "producer"\)/);
+  assert.match(app, /IQ\.walkAway\(game, "producer"\)/);
+  assert.match(app, /dom\.guaranteedValue\.textContent = \(game\.guaranteedFloor \|\| 0\)\.toLocaleString\(\)/);
+  // Engine: the floor holds the score up, and walk-away ends the run.
+  assert.match(engine, /function bankGuarantee/);
+  assert.match(engine, /function walkAway/);
+  assert.match(engine, /const nextScore = Math\.max\(guaranteedFloor, currentScore \+ rawDelta\)/);
+});
+
 test("premium spacing tokens align stage, timer and 9:16 surfaces", () => {
   const css = readProjectFile("styles.css");
 
@@ -300,8 +317,8 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq38"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq38"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq39"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq39"><\/script>/);
 });
 
 test("contestant and stage hide the question until it goes live", () => {
