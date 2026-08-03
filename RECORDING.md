@@ -15,8 +15,13 @@ yourself; the point is to exercise the whole flow.
   the safety net. A full disk also stalls OBS's own recording. Check first.
 - **Serve the app** over http (service workers need it):
   ```sh
-  npm start          # serves on http://localhost:8787
+  npm start          # runs the live relay: serves the app AND prints the LAN URL
   ```
+  `npm start` prints the exact host URL to open (e.g.
+  `http://192.168.10.247:8787/index.html#host`). Open the host on that **LAN
+  address, not `localhost`**, so the join QR resolves and a contestant phone on
+  the same Wi-Fi can follow the show live. (`npm run serve` is the bare static
+  server with no sync — fine for a solo run with no phone.)
 - **OBS** installed, with one scene ready.
 - **Audio:** decide the show-audio source now. The **Host machine** plays the
   SFX/cues; the **Stage window is silent by design**. So capture *desktop audio*
@@ -57,13 +62,19 @@ Create the session, then walk the flow and tick each item:
       paired with the resolution they were read at.
 - [ ] Select an answer, **Source Signal** lifeline, resolve it
 - [ ] Next question → **Trusted Circle** lifeline, resolve it
+- [ ] **50:50** on a question → confirm two wrong answers strike out on the Host
+      *and* the Stage (and the phone, if a contestant is joined)
 - [ ] **Lock** an answer → **Reveal** (correct/wrong SFX) → **Knowledge Drop**
       → **Commit score**
+- [ ] After a correct commit, **Bank guarantee** → the "Guaranteed" readout
+      locks; on a later wrong answer the score holds at that floor (doesn't drop)
 - [ ] Deliberately **Undo** one step and redo it — confirm it recovers cleanly
 - [ ] Let one timer **run to zero** (hear the expiry cue)
 - [ ] Reach the **420 Decision** → pick an IQ target → **Open final**
 - [ ] Finish → land on the **recap** (Host + Stage) → read the final IQ on camera
 - [ ] **Export audit** (EX) and **download a backup** (BK) when done
+- [ ] *(Optional — separate quick session, since it ends the show)* **Walk away**
+      between questions → recap reads "Walked away — Banked N IQ"
 
 ## 4. What to watch for (the notes that drive the next phase)
 
@@ -76,6 +87,9 @@ Create the session, then walk the flow and tick each item:
   clear the center knowledge ring? (Both collide at smaller window sizes; the
   still confirms whether the broadcast size is clean.)
 - **Audio balance:** cues vs mic vs any room noise.
+- **Control density:** the host control row now also carries 50:50, Bank
+  guarantee and Walk away. Under pressure, can you still find Lock / Reveal /
+  Commit fast, or does the row need grouping?
 - **Pacing:** does any state feel like it needs an extra beat / hold?
 - **Fumbles:** anywhere you reached for a control that wasn't where you expected.
 
