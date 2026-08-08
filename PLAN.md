@@ -5,7 +5,7 @@ Claude and Codex (Codex takes over when Claude usage limits hit). This file is
 the shared source of truth for what's decided and what's off-limits, so a
 deliberate decision doesn't get silently reversed by whoever edits next.
 
-Owner: Davies (github.com/DaviesBassey/420iq-studio). Last updated: 2026-07-24.
+Owner: Davies (github.com/DaviesBassey/420iq-studio). Last updated: 2026-08-08.
 
 ## The one rule
 
@@ -40,6 +40,19 @@ is not "it was agreed."
       remote participants, and what player data is collected/retained.
 3. **Answer keys are never exposed** to the public/player/stage surfaces before
    the host reveal. This invariant holds on every surface and over any sync.
+   - **How it's enforced (do not regress):** the host broadcasts only
+     `sanitizeGameForDisplay(game)`, which deletes `correctIndex` and
+     `verifiedSignalIndex` from every question in `pack.sequence`. Every outbound
+     path — BroadcastChannel (`postSync`), the LAN relay (`publishStateToRelay`),
+     and the `storage`-event fallback — sends/applies only that sanitized view.
+     The host keeps its full local `game` (it never applies its own broadcast).
+     The correct answer reaches displays **only** via the `reveal` object at
+     reveal time. If you touch broadcast/sync, keep the full game off the wire.
+   - **Known residual:** crash-recovery persists the full game to same-origin
+     `localStorage`, so a display on the *operator's own machine* can read the
+     key there. Not a contestant vector (a networked device is a different origin
+     and only sees the sanitized relay stream). Revisit if host and displays ever
+     share an origin with untrusted viewers.
 4. **Access separation is enforced.** admin / player / stage are distinct;
    players never receive host controls; the Stage broadcast surface never shows
    modals (e.g. the age gate).
