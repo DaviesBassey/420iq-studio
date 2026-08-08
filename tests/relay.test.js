@@ -199,7 +199,7 @@ test("client wires network sync: host publishes, displays subscribe", () => {
   assert.match(app, /function openRelayStateStream/);
   assert.match(app, /new EventSource\("\/sync\/subscribe"\)/);
   // Host broadcast mirrors to the relay, and init runs at startup.
-  assert.match(app, /postSync\(\{ type: "state", game \}\);\s*publishStateToRelay\(\);/);
+  assert.match(app, /postSync\(\{ type: "state", game: publicGame \}\);\s*publishStateToRelay\(publicGame\);/);
   assert.match(app, /initNetworkSync\(\);/);
 
   // Answer path: the player posts its tap, the host applies it as a pending pick.

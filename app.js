@@ -973,14 +973,33 @@
     }
   }
 
+  function sanitizeGameForDisplay(sourceGame) {
+    // Displays (player/stage) must never receive the answer key before the host
+    // reveal — the reveal event carries the correct answer separately. Strip the
+    // per-question keys from the whole pack so a networked device can't read the
+    // answer off the wire or out of state (Locked decision #3).
+    const publicGame = cloneState(sourceGame);
+    if (publicGame && publicGame.pack && Array.isArray(publicGame.pack.sequence)) {
+      publicGame.pack.sequence = publicGame.pack.sequence.map(question => {
+        const stripped = { ...question };
+        delete stripped.correctIndex;
+        delete stripped.verifiedSignalIndex;
+        return stripped;
+      });
+    }
+    return publicGame;
+  }
+
   function broadcastState() {
-    // Only the host broadcasts authoritative state to display windows.
+    // Only the host broadcasts authoritative state to display windows, and only
+    // the answer-key-stripped view of it.
     if (isDisplayAccess() || !game) {
       return;
     }
 
-    postSync({ type: "state", game });
-    publishStateToRelay();
+    const publicGame = sanitizeGameForDisplay(game);
+    postSync({ type: "state", game: publicGame });
+    publishStateToRelay(publicGame);
   }
 
   function broadcastReset() {
@@ -1131,7 +1150,7 @@
       if (isDisplayAccess() && (event.key === STORAGE_KEY || event.key === STORAGE_BACKUP_KEY)) {
         const loaded = loadSavedGame();
         if (loaded) {
-          applyIncomingGame(loaded);
+          applyIncomingGame(sanitizeGameForDisplay(loaded));
         } else {
           clearDisplayGame();
         }
@@ -1144,19 +1163,22 @@
     }
   }
 
-  function publishStateToRelay() {
+  function publishStateToRelay(publicGame) {
     // Host-only: mirror authoritative state to the LAN relay so a phone or a
     // second-device display on the network can follow the live show. No-op when
     // the app is served statically (no relay) — network sync stays disabled.
+    // Always sends the answer-key-stripped view (Locked decision #3).
     if (!networkSyncEnabled || isDisplayAccess() || !game) {
       return;
     }
+
+    const payload = publicGame || sanitizeGameForDisplay(game);
 
     try {
       fetch("/sync/publish", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ type: "state", game }),
+        body: JSON.stringify({ type: "state", game: payload }),
         keepalive: true
       }).catch(() => {
         // Relay unreachable mid-show — same-browser BroadcastChannel still works.

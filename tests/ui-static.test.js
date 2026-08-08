@@ -142,6 +142,20 @@ test("time-up closes the contestant answer window and re-renders to lock it", ()
   assert.match(app, /if \(snapshot\.expired && !timeoutRendered\) \{\s*timeoutRendered = true;\s*render\(\);/);
 });
 
+test("broadcast state to displays strips the answer key (never over any sync)", () => {
+  const app = readProjectFile("app.js");
+
+  // A single sanitizer removes the per-question answer keys from the pack.
+  assert.match(app, /function sanitizeGameForDisplay/);
+  assert.match(app, /delete stripped\.correctIndex;/);
+  assert.match(app, /delete stripped\.verifiedSignalIndex;/);
+  // Every outbound path uses the sanitized view: BroadcastChannel, relay, and
+  // the localStorage fallback.
+  assert.match(app, /const publicGame = sanitizeGameForDisplay\(game\);\s*postSync\(\{ type: "state", game: publicGame \}\);\s*publishStateToRelay\(publicGame\);/);
+  assert.match(app, /const payload = publicGame \|\| sanitizeGameForDisplay\(game\);/);
+  assert.match(app, /applyIncomingGame\(sanitizeGameForDisplay\(loaded\)\)/);
+});
+
 test("premium spacing tokens align stage, timer and 9:16 surfaces", () => {
   const css = readProjectFile("styles.css");
 
@@ -331,8 +345,8 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq41"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq41"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq42"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq42"><\/script>/);
 });
 
 test("contestant and stage hide the question until it goes live", () => {
@@ -407,7 +421,7 @@ test("stage display mode and cross-window sync power the two-monitor broadcast",
   // BroadcastChannel primary + storage-event fallback, host stays authoritative.
   assert.match(app, /new BroadcastChannel\(SYNC_CHANNEL_NAME\)/);
   assert.match(app, /window\.addEventListener\("storage"/);
-  assert.match(app, /function broadcastState\(\)[\s\S]*postSync\(\{ type: "state", game \}\)/);
+  assert.match(app, /function broadcastState\(\)[\s\S]*postSync\(\{ type: "state", game: publicGame \}\)/);
   assert.match(app, /function applyIncomingGame\(/);
   assert.match(app, /initCrossWindowSync\(\)/);
 
