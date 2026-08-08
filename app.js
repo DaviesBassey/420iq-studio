@@ -516,6 +516,7 @@
   let soundEnabled = readInitialSoundEnabled();
   let lastTickSecond = null;
   let timeoutCuePlayed = false;
+  let timeoutRendered = false;
   let syncChannel = null;
   let networkSyncEnabled = false;
   let joinHostOverride = readJoinHostOverride();
@@ -882,6 +883,12 @@
     return true;
   }
 
+  function answerTimerExpired() {
+    // The countdown runs locally on every surface from the shared end timestamp,
+    // so each display can tell on its own when the answer window has closed.
+    return Boolean(game && IQ.getTimerSnapshot(game).expired);
+  }
+
   function updateTimerDisplays(options = {}) {
     const allowSfx = options.allowSfx !== false;
     const fallbackDuration = defaultTimerSeconds();
@@ -921,6 +928,7 @@
     if (!timerRunning) {
       lastTickSecond = null;
       timeoutCuePlayed = false;
+      timeoutRendered = false;
       return;
     }
 
@@ -941,6 +949,15 @@
       }
 
       lastTickSecond = snapshot.remainingSeconds;
+
+      // The countdown is text-only; re-render once at time-up so the choices
+      // actually disable on the contestant's display. lastTickSecond is already
+      // updated, so the render's own timer pass is a no-op (no recursion), and
+      // this runs regardless of allowSfx (the Stage is silent but must lock out).
+      if (snapshot.expired && !timeoutRendered) {
+        timeoutRendered = true;
+        render();
+      }
     }
   }
 
@@ -1044,9 +1061,11 @@
       return;
     }
 
-    // Only while the answer is still open (not locked/revealed).
+    // Only while the answer is still open (not locked/revealed) and before the
+    // clock runs out — a tap that arrives after time-up is ignored.
     const canSelect =
-      (game.phase === "QUESTION_LIVE" || game.phase === "LIFELINE_ACTIVE") && !game.lockedAnswer;
+      (game.phase === "QUESTION_LIVE" || game.phase === "LIFELINE_ACTIVE")
+      && !game.lockedAnswer && !answerTimerExpired();
     if (!canSelect || message.choiceIndex < 0) {
       return;
     }
@@ -2461,7 +2480,10 @@
     const lockedChoice = game && game.lockedAnswer ? game.lockedAnswer.choiceIndex : null;
     const visibleSelection = lockedChoice !== null ? lockedChoice : selectedChoiceIndex;
     const reveal = game ? game.reveal : null;
-    const canSelect = game && (game.phase === "QUESTION_LIVE" || game.phase === "LIFELINE_ACTIVE") && !game.lockedAnswer;
+    // When time is up the contestant can no longer choose; the host (admin) keeps
+    // control so they can still lock the final answer and move the show on.
+    const canSelect = game && (game.phase === "QUESTION_LIVE" || game.phase === "LIFELINE_ACTIVE")
+      && !game.lockedAnswer && !(isDisplayAccess() && answerTimerExpired());
     const eliminated = (publicQuestion && publicQuestion.fiftyFiftyRemoved) || [];
 
     publicQuestion.choices.forEach((choice, index) => {
@@ -2724,7 +2746,8 @@
       game &&
       publicQuestion &&
       (game.phase === "QUESTION_LIVE" || game.phase === "LIFELINE_ACTIVE") &&
-      !game.lockedAnswer
+      !game.lockedAnswer &&
+      !answerTimerExpired()
     );
 
     dom.phoneFrame.classList.toggle("live", Boolean(game));
@@ -3283,7 +3306,8 @@
     const index = ANSWER_LETTERS.indexOf(event.key.toUpperCase());
     const question = IQ.getPublicQuestion(game);
     const eliminated = (question && question.fiftyFiftyRemoved) || [];
-    if (index >= 0 && index < question.choices.length && !game.lockedAnswer && !eliminated.includes(index)) {
+    if (index >= 0 && index < question.choices.length && !game.lockedAnswer && !eliminated.includes(index)
+      && !(isDisplayAccess() && answerTimerExpired())) {
       selectedChoiceIndex = index;
       render();
       playCue("answerSelect");
