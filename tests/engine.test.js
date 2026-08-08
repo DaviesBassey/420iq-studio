@@ -281,6 +281,27 @@ test("same seed builds the same valid balanced sequence", () => {
   assert.equal(first.diagnostics.violations.length, 0);
 });
 
+test("answer choices are shuffled so the correct answer is not always in the same slot", () => {
+  const packA = engine.buildBalancedSequence(sampleQuestions, { seed: "shuffle-check" });
+  const packB = engine.buildBalancedSequence(sampleQuestions, { seed: "shuffle-check" });
+
+  // Deterministic: same seed reproduces the same choice order + correctIndex.
+  assert.deepEqual(
+    packA.sequence.map(q => [q.id, q.correctIndex]),
+    packB.sequence.map(q => [q.id, q.correctIndex])
+  );
+
+  // The correct answer lands in more than one slot across the pack (not all "A").
+  const positions = new Set(packA.sequence.map(q => q.correctIndex));
+  assert.ok(positions.size > 1, "correct answers should not all share one slot");
+
+  // The remap is faithful: the choice at correctIndex is still the source-correct text.
+  const sourceCorrect = new Map(sampleQuestions.map(q => [q.id, q.choices[q.correctIndex]]));
+  packA.sequence.forEach(q => {
+    assert.equal(q.choices[q.correctIndex], sourceCorrect.get(q.id));
+  });
+});
+
 test("question timer reports remaining time and expiry", () => {
   const game = engine.createGame({
     mode: "solo",
@@ -316,7 +337,9 @@ test("answer reveal carries the correct SFX cue", () => {
   game = engine.transition(game, "INTRO", {}, "producer");
   game = engine.transition(game, "QUESTION_READY", {}, "producer");
   game = engine.transition(game, "QUESTION_LIVE", {}, "producer");
-  game = engine.lockAnswer(game, { choiceIndex: 1, confidence: "Curious" }, "contestant");
+  const question = engine.currentQuestion(game);
+  const wrongIndex = (question.correctIndex + 1) % question.choices.length;
+  game = engine.lockAnswer(game, { choiceIndex: wrongIndex, confidence: "Curious" }, "contestant");
   game = engine.revealAnswer(game, "producer");
 
   assert.equal(game.reveal.correct, false);
@@ -383,7 +406,7 @@ test("commit records a per-question result that a rewind cleanly removes", () =>
   game = engine.transition(game, "QUESTION_READY", {}, "producer");
   game = engine.transition(game, "QUESTION_LIVE", {}, "producer");
   const beforeLock = game;
-  game = engine.lockAnswer(game, { choiceIndex: 0, confidence: "Curious" }, "contestant");
+  game = engine.lockAnswer(game, { choiceIndex: engine.currentQuestion(game).correctIndex, confidence: "Curious" }, "contestant");
   game = engine.revealAnswer(game, "producer");
   game = engine.commitScore(game, "scorekeeper");
 

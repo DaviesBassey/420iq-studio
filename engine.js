@@ -280,6 +280,20 @@
     };
   }
 
+  function shuffleQuestionChoices(question, seed) {
+    // Deterministically reorder the answer choices so the correct answer is not
+    // always in the same slot, then remap correctIndex to its new position.
+    const order = shuffleWithSeed(
+      question.choices.map((choice, index) => index),
+      `${seed}:${question.id}:choices`
+    );
+    return {
+      ...question,
+      choices: order.map(index => question.choices[index]),
+      correctIndex: order.indexOf(question.correctIndex)
+    };
+  }
+
   function buildBalancedSequence(questions, options = {}) {
     const count = Number.isInteger(options.count)
       ? Math.max(1, Math.min(options.count, questions.length))
@@ -323,10 +337,12 @@
       }
     }
 
+    const shuffledSequence = bestSequence.map(question => shuffleQuestionChoices(question, seed));
+
     return {
       seed,
-      checksum: checksumQuestions(bestSequence),
-      sequence: bestSequence,
+      checksum: checksumQuestions(shuffledSequence),
+      sequence: shuffledSequence,
       diagnostics: {
         ...bestDiagnostics,
         seed
