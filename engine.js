@@ -944,6 +944,11 @@
     nextGame.lockedAnswer = null;
     nextGame.reveal = null;
     nextGame.lifelineActive = null;
+    // Clear the 50:50 elimination — it's an effect on the question it was used
+    // on, not a standing state. `used` stays true (lifelines are once-per-show).
+    if (nextGame.lifelines && nextGame.lifelines.fiftyFifty) {
+      nextGame.lifelines.fiftyFifty.removed = null;
+    }
     nextGame.timer = {
       ...nextGame.timer,
       startedAtEpochMs: null,
@@ -995,6 +1000,11 @@
     nextGame.lockedAnswer = null;
     nextGame.reveal = null;
     nextGame.lifelineActive = null;
+    // Clear the 50:50 elimination — it's an effect on the question it was used
+    // on, not a standing state. `used` stays true (lifelines are once-per-show).
+    if (nextGame.lifelines && nextGame.lifelines.fiftyFifty) {
+      nextGame.lifelines.fiftyFifty.removed = null;
+    }
     nextGame.timer = {
       ...nextGame.timer,
       startedAtEpochMs: null,

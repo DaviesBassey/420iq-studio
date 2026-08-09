@@ -214,6 +214,35 @@ test("50:50 removes two wrong answers, keeps the correct one, and cannot repeat"
   assert.throws(() => engine.useFiftyFifty(game, "producer"), /already used/);
 });
 
+test("50:50 elimination clears on the next question (but the lifeline stays spent)", () => {
+  let game = engine.createGame({
+    mode: "solo",
+    players: [{ name: "Ari" }],
+    questions: sampleQuestions,
+    seed: "fifty-carry"
+  });
+
+  game = engine.transition(game, "INTRO", {}, "producer");
+  game = engine.transition(game, "QUESTION_READY", {}, "producer");
+  game = engine.transition(game, "QUESTION_LIVE", {}, "producer");
+  game = engine.useFiftyFifty(game, "producer");
+  assert.equal(engine.getPublicQuestion(game).fiftyFiftyRemoved.length, 2);
+
+  const correctIndex = engine.currentQuestion(game).correctIndex;
+  game = engine.lockAnswer(game, { choiceIndex: correctIndex, confidence: "Curious" }, "contestant");
+  game = engine.revealAnswer(game, "producer");
+  game = engine.commitScore(game, "scorekeeper");
+  game = engine.advanceQuestion(game, "producer");
+  game = engine.transition(game, "QUESTION_LIVE", {}, "producer");
+
+  assert.equal(
+    engine.getPublicQuestion(game).fiftyFiftyRemoved,
+    null,
+    "the removed pair does not carry into the next question"
+  );
+  assert.equal(game.lifelines.fiftyFifty.used, true, "50:50 stays spent for the show");
+});
+
 test("banked guarantee floors the score and walk-away ends the run at the banked total", () => {
   let game = engine.createGame({
     mode: "solo",
