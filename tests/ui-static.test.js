@@ -156,6 +156,22 @@ test("broadcast state to displays strips the answer key (never over any sync)", 
   assert.match(app, /applyIncomingGame\(sanitizeGameForDisplay\(loaded\)\)/);
 });
 
+test("the contestant phone shows the active lifeline (read-only)", () => {
+  const html = readProjectFile("index.html");
+  const app = readProjectFile("app.js");
+  const css = readProjectFile("styles.css");
+
+  assert.match(html, /id="playerLifeline"/);
+  assert.match(app, /playerLifeline: document\.getElementById\("playerLifeline"\)/);
+  assert.match(app, /function renderPlayerLifeline/);
+  // Only during an active lifeline, and read from the synced lifelineActive.
+  assert.match(app, /game\.phase === "LIFELINE_ACTIVE" \? game\.lifelineActive : null/);
+  // Shows Source Signal evidence and the Trusted Circle consensus.
+  assert.match(app, /renderConsensus\(active\.consensus/);
+  assert.match(css, /\.player-lifeline/);
+  assert.match(css, /\.player-lifeline \.signal-choice\.verified/);
+});
+
 test("premium spacing tokens align stage, timer and 9:16 surfaces", () => {
   const css = readProjectFile("styles.css");
 
@@ -345,8 +361,8 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq42"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq42"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq43"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq43"><\/script>/);
 });
 
 test("contestant and stage hide the question until it goes live", () => {

@@ -480,6 +480,7 @@
     playerQuestion: document.getElementById("playerQuestion"),
     playerPrompt: document.getElementById("playerPrompt"),
     playerChoices: document.getElementById("playerChoices"),
+    playerLifeline: document.getElementById("playerLifeline"),
     playerTimer: document.getElementById("playerTimer"),
     playerTimerCopy: document.getElementById("playerTimerCopy"),
     teamModeText: document.getElementById("teamModeText"),
@@ -2837,6 +2838,7 @@
       dom.playerChoices.innerHTML = "";
       dom.teamModeText.textContent = "Single player mode is ready.";
       dom.lifelineState.innerHTML = "";
+      renderPlayerLifeline();
       return;
     }
 
@@ -2860,6 +2862,53 @@
       dom.playerChoices.innerHTML = "";
     }
     renderLifelineState();
+    renderPlayerLifeline();
+  }
+
+  function renderPlayerLifeline() {
+    const panel = dom.playerLifeline;
+    if (!panel) {
+      return;
+    }
+
+    // Read-only mirror of the active lifeline for the contestant's phone. The
+    // host still resolves it. Data comes from the synced game.lifelineActive,
+    // which the display sanitizer leaves intact (it carries no answer key — the
+    // verified source signal is only set once the host resolves, and by design
+    // does not disclose the answer).
+    const active = game && game.phase === "LIFELINE_ACTIVE" ? game.lifelineActive : null;
+    if (!active) {
+      panel.hidden = true;
+      panel.innerHTML = "";
+      return;
+    }
+
+    panel.hidden = false;
+
+    if (active.type === "sourceSignal") {
+      const signals = active.signals || [];
+      const list = signals
+        .map((signal, index) => {
+          const verified = active.resolved && index === active.verifiedSignalIndex;
+          return `<div class="signal-choice${verified ? " verified" : ""}"><span>${index + 1}</span><span>${escapeHtml(signal)}</span>${verified ? "<span class=\"verified-tag\">Verified</span>" : ""}</div>`;
+        })
+        .join("");
+      panel.innerHTML = `
+        <div class="panel-label">Source Signal</div>
+        <p>Weigh the evidence. The verified clue does not disclose the answer.</p>
+        <div class="signal-list">${list}</div>
+      `;
+      return;
+    }
+
+    // Trusted Circle: a connected contact, or the Circle Consensus fallback.
+    const body = active.selectedContact
+      ? `<p>${escapeHtml(active.selectedContact.name)} is connected. Listen for their advice, then lock your answer.</p>`
+      : `<p>No cleared contact — Circle Consensus:</p>${renderConsensus(active.consensus || [])}`;
+    panel.innerHTML = `
+      <div class="panel-label">${escapeHtml(active.mode || "Trusted Circle")}</div>
+      ${body}
+    `;
   }
 
   function renderLifelineState() {

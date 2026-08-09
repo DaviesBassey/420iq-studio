@@ -1237,6 +1237,34 @@ h3 {
   color: #d8fffb;
 }
 
+/* Contestant-phone lifeline panel: read-only mirror of the active lifeline. */
+.player-lifeline {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg, 18px);
+  background: rgba(12, 14, 24, 0.55);
+}
+
+.player-lifeline[hidden] {
+  display: none;
+}
+
+.player-lifeline .signal-choice.verified {
+  border-color: var(--cyan);
+  background: rgba(67, 214, 201, 0.16);
+  color: #d8fffb;
+}
+
+.player-lifeline .verified-tag {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
 .final-controls {
   display: grid;
   width: min(100%, 640px);
