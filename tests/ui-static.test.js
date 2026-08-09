@@ -128,18 +128,19 @@ test("walk-away and guarantee floor are wired end to end", () => {
   assert.match(engine, /const nextScore = Math\.max\(guaranteedFloor, currentScore \+ rawDelta\)/);
 });
 
-test("time-up closes the contestant answer window and re-renders to lock it", () => {
+test("time-up locks the contestant window host-authoritatively (no client-clock skew)", () => {
   const app = readProjectFile("app.js");
 
-  // A shared expiry check driven by the engine snapshot.
+  // Lockout trusts only the host-stamped stop time, never the device's own clock.
   assert.match(app, /function answerTimerExpired/);
+  assert.match(app, /Number\.isFinite\(game\.timer\.stoppedAtEpochMs\)/);
   assert.match(app, /IQ\.getTimerSnapshot\(game\)\.expired/);
-  // Contestant selection is blocked at expiry (host/admin keeps control).
+  // Contestant selection gates on it (host/admin keeps control); relay taps too.
   assert.match(app, /!\(isDisplayAccess\(\) && answerTimerExpired\(\)\)/);
-  // A late tap arriving over the relay after time-up is rejected on the host.
   assert.match(app, /!game\.lockedAnswer && !answerTimerExpired\(\)/);
-  // The countdown re-renders once at time-up so the disable actually takes effect.
-  assert.match(app, /if \(snapshot\.expired && !timeoutRendered\) \{\s*timeoutRendered = true;\s*render\(\);/);
+  // At its own expiry the host stamps the stop and broadcasts so displays lock
+  // out from that shared timestamp.
+  assert.match(app, /!isDisplayAccess\(\) && game\.timer && game\.timer\.running[\s\S]*IQ\.stopQuestionTimer\(game\);\s*saveGame\(\);/);
 });
 
 test("broadcast state to displays strips the answer key (never over any sync)", () => {
@@ -361,8 +362,8 @@ test("html carries an early player access bootstrap and current cache token", ()
   assert.match(html, /function bootstrapPlayerAccess\(\)/);
   assert.match(html, /document\.body\.dataset\.access = "player"/);
   assert.match(html, /window\.history\.replaceState\(null, "", playerUrl\)/);
-  assert.match(html, /<script src="\.\/engine\.js\?v=420iq44"><\/script>/);
-  assert.match(html, /<script src="\.\/app\.js\?v=420iq44"><\/script>/);
+  assert.match(html, /<script src="\.\/engine\.js\?v=420iq45"><\/script>/);
+  assert.match(html, /<script src="\.\/app\.js\?v=420iq45"><\/script>/);
 });
 
 test("contestant and stage hide the question until it goes live", () => {

@@ -885,9 +885,14 @@
   }
 
   function answerTimerExpired() {
-    // The countdown runs locally on every surface from the shared end timestamp,
-    // so each display can tell on its own when the answer window has closed.
-    return Boolean(game && IQ.getTimerSnapshot(game).expired);
+    // Host-authoritative: the answer window is closed only once the host has
+    // stopped the timer (stoppedAtEpochMs is a host-clock value), so a display
+    // whose clock differs from the host's is never locked out early. The host
+    // stamps the stop at its own expiry (see updateTimerDisplays) and broadcasts.
+    if (!game || !game.timer || !Number.isFinite(game.timer.stoppedAtEpochMs)) {
+      return false;
+    }
+    return IQ.getTimerSnapshot(game).expired;
   }
 
   function updateTimerDisplays(options = {}) {
@@ -957,6 +962,13 @@
       // this runs regardless of allowSfx (the Stage is silent but must lock out).
       if (snapshot.expired && !timeoutRendered) {
         timeoutRendered = true;
+        // The host closes the answer window authoritatively: stamp the stop on
+        // its own clock and broadcast, so every display locks out from that
+        // shared timestamp instead of its own (possibly skewed) clock.
+        if (!isDisplayAccess() && game.timer && game.timer.running) {
+          game = IQ.stopQuestionTimer(game);
+          saveGame();
+        }
         render();
       }
     }
