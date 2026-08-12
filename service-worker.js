@@ -13,9 +13,9 @@
  * Bump the `?v=` token on engine.js / app.js in index.html AND here together
  * when their contents change, so the precache stores the fresh bytes.
  */
-const CACHE_VERSION = "v38";
+const CACHE_VERSION = "v39";
 const CACHE_NAME = `420iq-shell-${CACHE_VERSION}`;
-const ASSET_VERSION = "420iq45";
+const ASSET_VERSION = "420iq46";
 
 // Core shell: if any of these fail to cache, offline launch is impossible, so
 // `addAll` fails loudly (atomic) and the old worker stays in control.
@@ -31,6 +31,7 @@ const CRITICAL_URLS = [
 // these are cached best-effort and a failure is tolerated.
 const OPTIONAL_URLS = [
   "./manifest.webmanifest",
+  `./icons/420iq-logo.png?v=${ASSET_VERSION}`,
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/maskable-192.png",

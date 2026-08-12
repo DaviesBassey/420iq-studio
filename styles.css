@@ -136,6 +136,16 @@ button:disabled {
     0 0 34px rgba(216, 154, 40, 0.28);
 }
 
+/* Brand badge logo (replaces the decorative ring). */
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: contain;
+  flex: none;
+  filter: drop-shadow(0 4px 14px rgba(37, 99, 255, 0.32));
+}
+
 .surface-tabs {
   display: inline-flex;
   gap: 3px;
@@ -2087,6 +2097,14 @@ body::after {
     0 0 0 1px rgba(255, 255, 255, 0.18),
     0 12px 34px rgba(37, 99, 255, 0.34),
     inset 0 0 22px rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="premium-mobile"] .brand-logo {
+  width: 52px;
+  height: 52px;
+  filter:
+    drop-shadow(0 6px 18px rgba(37, 99, 255, 0.42))
+    drop-shadow(0 0 12px rgba(228, 76, 255, 0.22));
 }
 
 [data-theme="premium-mobile"] .surface-tabs {
